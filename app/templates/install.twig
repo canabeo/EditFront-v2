@@ -1,0 +1,124 @@
+{% extends 'base-layout.twig' %}
+
+{% block title %}{{ t('install.title') }} — EditFront v2{% endblock %}
+
+{% block body %}
+<main class="login-wrap">
+  <div class="login-card install-card">
+    <h1>EditFront <span class="v2">v2</span> — {{ t('install.title') }}</h1>
+
+    {% if mode == 'gone' %}
+    <p>{{ t('install.gone_msg') }}</p>
+    <p><a href="{{ url('login') }}">{{ t('install.go_login') }}</a></p>
+    {% else %}
+
+    {# --- Step 1: self-check --- #}
+    <section class="install-step is-active" data-step="1">
+      <h2>{{ t('install.step1_title') }}</h2>
+      <ul class="check-list">
+        {% for c in checks %}
+        <li>
+          <span class="check-{{ c.status }}">{% if c.status == 'ok' %}✓{% elseif c.status == 'warn' %}⚠{% else %}✕{% endif %}</span>
+          <span class="check-label">{{ t('install.check_' ~ c.key) }}</span>
+          <span class="check-detail">{{ c.detail }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% if not can_proceed %}<p class="login-error">{{ t('install.blocked') }}</p>{% endif %}
+      <div class="ef-modal-actions">
+        <button type="button" class="btn btn-primary" data-next="2" {% if not can_proceed %}disabled{% endif %}>{{ t('install.next') }} →</button>
+      </div>
+    </section>
+
+    {# --- Step 2: page detection --- #}
+    <section class="install-step" data-step="2">
+      <h2>{{ t('install.step2_title') }}</h2>
+      <p>{{ t('install.pages_found', {n: pages_count}) }}</p>
+      <p class="install-note">{{ t('install.canon_warning') }}</p>
+      <label class="install-checkbox">
+        <input type="checkbox" id="ef-annotate-only">
+        <span>{{ t('install.annotate_only_label') }}<br><small class="muted">{{ t('install.annotate_only_hint') }}</small></span>
+      </label>
+      <div class="ef-modal-actions">
+        <button type="button" class="btn btn-ghost" data-back="1">← {{ t('install.back') }}</button>
+        <button type="button" class="btn btn-primary" data-next="3">{{ t('install.next') }} →</button>
+      </div>
+    </section>
+
+    {# --- Step 3: admin creation --- #}
+    <section class="install-step" data-step="3">
+      <h2>{{ t('install.step3_title') }}</h2>
+      <label class="ef-field">
+        <span>{{ t('install.admin_username') }}</span>
+        <input type="text" id="ef-admin-user" autocomplete="username" value="admin">
+      </label>
+      <label class="ef-field">
+        <span>{{ t('install.admin_password') }}</span>
+        <input type="password" id="ef-admin-pass" autocomplete="new-password">
+      </label>
+      <p class="login-error" id="ef-install-err" hidden></p>
+      <div class="ef-modal-actions">
+        <button type="button" class="btn btn-ghost" data-back="2">← {{ t('install.back') }}</button>
+        <button type="button" class="btn btn-primary" id="ef-install-go">{{ t('install.create_admin') }}</button>
+      </div>
+    </section>
+
+    {% if ui_langs()|length > 1 %}{% include '_lang_switcher.twig' %}{% endif %}
+    {% endif %}
+  </div>
+</main>
+
+{% if mode != 'gone' %}
+<script>
+(function () {
+  'use strict';
+  var CSRF = document.body.getAttribute('data-cms-csrf') || '';
+  var BP = window.__basePath || '';
+  var I18N = window.__i18n || {};
+  function t(key) { return (key in I18N) ? I18N[key] : key; }
+
+  var steps = {};
+  document.querySelectorAll('.install-step').forEach(function (s) { steps[s.getAttribute('data-step')] = s; });
+  function show(n) {
+    Object.keys(steps).forEach(function (k) { steps[k].classList.toggle('is-active', k === String(n)); });
+  }
+  document.querySelectorAll('[data-next]').forEach(function (b) {
+    b.addEventListener('click', function () { if (!b.disabled) show(b.getAttribute('data-next')); });
+  });
+  document.querySelectorAll('[data-back]').forEach(function (b) {
+    b.addEventListener('click', function () { show(b.getAttribute('data-back')); });
+  });
+
+  var go = document.getElementById('ef-install-go');
+  var err = document.getElementById('ef-install-err');
+  if (go) go.addEventListener('click', function () {
+    err.hidden = true;
+    var user = document.getElementById('ef-admin-user').value.trim();
+    var pass = document.getElementById('ef-admin-pass').value;
+    var annotate = document.getElementById('ef-annotate-only').checked;
+    go.disabled = true;
+    fetch(BP + '/install', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      credentials: 'same-origin',
+      body: JSON.stringify({ username: user, password: pass, annotate_only: annotate })
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, data: d }; });
+    }).then(function (res) {
+      if (res.status === 200 && res.data.ok) {
+        window.location = res.data.redirect;
+      } else {
+        err.textContent = res.data.error || ('HTTP ' + res.status);
+        err.hidden = false;
+        go.disabled = false;
+      }
+    }).catch(function (e) {
+      err.textContent = String(e && e.message || e);
+      err.hidden = false;
+      go.disabled = false;
+    });
+  });
+}());
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,16 @@
+/* adopt-before-after editor panel (loaded into the preview iframe). */
+.cms-ba-thumb {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  height: 110px;
+  object-fit: cover;
+  background: #111827;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  margin: 2px 0 6px;
+}
+.cms-ba-thumb:hover {
+  border-color: #2563eb;
+}

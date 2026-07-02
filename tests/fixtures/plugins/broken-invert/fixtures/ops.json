@@ -1,0 +1,6 @@
+{
+  "ops": [
+    { "op": "insert", "kind": "broken-block", "forward": { "props": { "label": "Hi", "count": 5 } } },
+    { "op": "setprop", "kind": "broken-block", "state_before": { "props": { "label": "Hi", "count": 5 } }, "forward": { "path": "label", "value": "Yo" } }
+  ]
+}

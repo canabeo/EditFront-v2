@@ -1,0 +1,96 @@
+{% extends 'base-layout.twig' %}
+{# Editor extends the SAME base-layout — never a standalone doctype
+   (§4.6 anti-trap: standalone editor template made v1 duplicate i18n bootstrap). #}
+
+{% block title %}{{ page }} — EditFront v2{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ asset('editor-shell.css') }}">
+{% endblock %}
+
+{% block body %}
+{% set sprite = asset('icons.svg') %}
+<div class="ef-editor">
+  <header class="ef-topbar">
+    <div class="ef-topbar-left">
+      <a class="btn btn-ghost" href="{{ url('') }}" title="{{ t('editor.back') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-arrow-left-line"></use></svg></a>
+      <span class="ef-page-name" title="{{ page }}">{{ page }}</span>
+      <span class="ef-sel-chip" id="ef-selected-chip" hidden></span>
+    </div>
+    <div class="ef-topbar-right">
+      {% if ui_langs()|length > 1 %}{% include '_lang_switcher.twig' %}{% endif %}
+      <span class="ef-status" id="ef-status"></span>
+      <button class="btn" id="ef-undo" disabled title="{{ t('editor.undo') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-arrow-go-back-line"></use></svg></button>
+      <button class="btn" id="ef-redo" disabled title="{{ t('editor.redo') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-arrow-go-forward-line"></use></svg></button>
+      <a class="btn btn-ghost" id="ef-open-live" href="#" target="_blank" rel="noopener" title="{{ t('editor.open_live') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-eye-line"></use></svg></a>
+      <button class="btn" id="ef-seo" title="{{ t('seo.title') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-file-search-fill"></use></svg></button>
+      <button class="btn" id="ef-backups" title="{{ t('backups.title') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-history-line"></use></svg></button>
+      <button class="btn btn-primary" id="ef-save" disabled>{{ t('editor.save') }}</button>
+    </div>
+  </header>
+  <div class="ef-backups-panel" id="ef-backups-panel" hidden>
+    <div class="ef-backups-head">
+      <strong>{{ t('backups.title') }}</strong>
+      <button type="button" class="ef-backups-close" id="ef-backups-close"><svg class="ef-ico"><use href="{{ sprite }}#ri-close-line"></use></svg></button>
+    </div>
+    <div class="ef-backups-list" id="ef-backups-list"></div>
+  </div>
+  <div class="ef-seo-overlay" id="ef-seo-modal" hidden>
+    <div class="ef-modal-backdrop" id="ef-seo-backdrop"></div>
+    <div class="ef-modal-box" role="dialog" aria-modal="true" aria-label="{{ t('seo.heading') }}">
+      <div class="ef-modal-head">
+        <strong>{{ t('seo.heading') }}</strong>
+        <button type="button" class="ef-modal-close" id="ef-seo-close" title="{{ t('common.close') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-close-line"></use></svg></button>
+      </div>
+      <div class="ef-modal-body">
+        <label class="ef-field">
+          <span>{{ t('seo.field_title') }} <em class="ef-count" id="ef-seo-title-count"></em></span>
+          <input type="text" id="ef-seo-title" maxlength="300" autocomplete="off">
+        </label>
+        <label class="ef-field">
+          <span>{{ t('seo.field_description') }} <em class="ef-count" id="ef-seo-desc-count"></em></span>
+          <textarea id="ef-seo-desc" rows="3" maxlength="1000"></textarea>
+        </label>
+        <label class="ef-field">
+          <span>{{ t('seo.field_canonical') }}</span>
+          <input type="text" id="ef-seo-canonical" placeholder="https://…" autocomplete="off">
+        </label>
+        <div class="ef-field-row">
+          <label class="ef-check"><input type="checkbox" id="ef-seo-index"> {{ t('seo.robots_index') }}</label>
+          <label class="ef-check"><input type="checkbox" id="ef-seo-follow"> {{ t('seo.robots_follow') }}</label>
+        </div>
+        <div class="ef-seo-preview">
+          <div class="ef-seo-preview-label">{{ t('seo.preview_label') }}</div>
+          <div class="ef-snippet">
+            <div class="ef-snippet-title" id="ef-seo-snip-title"></div>
+            <div class="ef-snippet-url" id="ef-seo-snip-url"></div>
+            <div class="ef-snippet-desc" id="ef-seo-snip-desc"></div>
+          </div>
+        </div>
+      </div>
+      <div class="ef-modal-foot">
+        <button type="button" class="btn" id="ef-seo-cancel">{{ t('common.cancel') }}</button>
+        <button type="button" class="btn btn-primary" id="ef-seo-save">{{ t('seo.save') }}</button>
+      </div>
+    </div>
+  </div>
+  <div class="ef-preview-wrap">
+    <iframe id="ef-preview" src="{{ url('preview') }}?page={{ page|url_encode }}" title="{{ t('editor.preview_title') }}"></iframe>
+  </div>
+</div>
+<script>
+window.__cmsEditor = {
+  page: {{ page|json_encode|raw }},
+  baseSha: {{ page_sha|json_encode|raw }},
+  saveUrl: {{ url('api/save')|json_encode|raw }},
+  draftUrl: {{ url('api/draft')|json_encode|raw }},
+  draftDeleteUrl: {{ url('api/draft/delete')|json_encode|raw }},
+  payloadUrl: {{ url('api/undo-payload')|json_encode|raw }},
+  backupsUrl: {{ url('api/backups')|json_encode|raw }},
+  restoreUrl: {{ url('api/restore')|json_encode|raw }},
+  seoUrl: {{ url('api/seo')|json_encode|raw }},
+  liveUrl: {{ ('/' ~ page)|json_encode|raw }}
+};
+</script>
+<script src="{{ asset('editor-shell.js') }}" defer></script>
+{% endblock %}

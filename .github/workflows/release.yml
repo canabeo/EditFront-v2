@@ -1,0 +1,45 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, mbstring, json, fileinfo, gd, zip
+          coverage: none
+
+      - name: Install runtime dependencies (no dev)
+        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+
+      - name: Assemble drop-in
+        run: |
+          mkdir -p dist/cms
+          cp -r app assets lang plugins vendor docs index.php .htaccess .user.ini .env.example README.md USAGE.md SECURITY.md CHANGELOG.md LICENSE dist/cms/
+          mkdir -p dist/cms/storage
+          : > dist/cms/storage/.gitkeep
+          rm -f dist/cms/lang/user/*.json || true
+
+      - name: Build ZIP
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          cd dist
+          zip -rq "editfront-${TAG}.zip" cms
+          ls -la
+
+      - name: Publish release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/editfront-*.zip

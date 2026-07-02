@@ -1,0 +1,77 @@
+{% extends 'base-layout.twig' %}
+
+{% block title %}{{ t('fonts.title') }} — EditFront v2{% endblock %}
+
+{% block body %}
+{% set sprite = asset('icons.svg') %}
+{% if font_css %}<style>{{ font_css|raw }}</style>{% endif %}
+<header class="topbar">
+  <div class="brand"><a href="{{ url('') }}">EditFront <span class="v2">v2</span></a></div>
+  <div class="topbar-right">
+    {% if ui_langs()|length > 1 %}{% include '_lang_switcher.twig' %}{% endif %}
+    <span class="user">{{ user }}</span>
+    <form method="post" action="{{ url('logout') }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-ghost">{{ t('dashboard.logout') }}</button>
+    </form>
+  </div>
+</header>
+
+<main class="content">
+  <div class="page-head">
+    <h1>{{ t('fonts.heading') }}</h1>
+    <a class="btn btn-ghost" href="{{ url('') }}" style="margin-left:auto"><svg class="ef-ico"><use href="{{ sprite }}#ri-arrow-left-line"></use></svg> {{ t('plugins.back') }}</a>
+  </div>
+
+  <p class="muted">{{ t('fonts.intro') }}</p>
+  <p class="muted">{{ t('fonts.presets_note', {n: preset_count}) }}</p>
+  {% if error %}<p class="login-error">{{ error }}</p>{% endif %}
+  {% if success %}<p class="account-ok">{{ success }}</p>{% endif %}
+
+  <form class="ef-font-upload" method="post" action="{{ url('settings/fonts') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label>
+      <span>{{ t('fonts.family') }}</span>
+      <input type="text" name="family" maxlength="41" pattern="[A-Za-z0-9][A-Za-z0-9 _-]{0,40}" placeholder="{{ t('fonts.family_ph') }}" autocomplete="off" required>
+    </label>
+    <label>
+      <span>{{ t('fonts.file') }}</span>
+      <input type="file" name="file" accept=".woff2,.woff,.ttf,.otf" required>
+    </label>
+    <button type="submit" class="btn btn-primary">{{ t('fonts.upload') }}</button>
+  </form>
+
+  {% if fonts is empty %}
+    <p class="muted">{{ t('fonts.empty') }}</p>
+  {% else %}
+  <table class="ef-font-table">
+    <thead>
+      <tr>
+        <th>{{ t('fonts.col_family') }}</th>
+        <th>{{ t('fonts.col_preview') }}</th>
+        <th>{{ t('fonts.col_format') }}</th>
+        <th>{{ t('fonts.col_size') }}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for f in fonts %}
+      <tr>
+        <td><strong>{{ f.family }}</strong></td>
+        <td class="ef-font-sample" style="font-family: '{{ f.family }}'">{{ t('fonts.sample') }}</td>
+        <td>{{ f.format }}</td>
+        <td>{{ (f.size / 1024)|round }} {{ t('dashboard.kb') }}</td>
+        <td>
+          <form method="post" action="{{ url('settings/fonts/delete') }}" onsubmit="return confirm('{{ t('fonts.delete_confirm') }}')">
+            <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+            <input type="hidden" name="family" value="{{ f.family }}">
+            <button type="submit" class="btn btn-ghost ef-font-del">{{ t('fonts.delete') }}</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</main>
+{% endblock %}

@@ -1,0 +1,350 @@
+{% extends 'base-layout.twig' %}
+
+{% block title %}{{ t('reviews.title') }} — EditFront v2{% endblock %}
+
+{% block body %}
+{% set sprite = asset('icons.svg') %}
+<header class="topbar">
+  <div class="brand"><a href="{{ url('') }}">EditFront <span class="v2">v2</span></a></div>
+  <div class="topbar-right">
+    {% if ui_langs()|length > 1 %}{% include '_lang_switcher.twig' %}{% endif %}
+    <span class="user">{{ user }}</span>
+    <form method="post" action="{{ url('logout') }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-ghost">{{ t('dashboard.logout') }}</button>
+    </form>
+  </div>
+</header>
+
+<main class="content content-wide">
+  <div class="page-head">
+    <h1>{{ t('reviews.heading') }}</h1>
+    <button type="button" class="btn btn-primary" id="rv-add-btn" style="margin-left:auto">
+      <svg class="ef-ico"><use href="{{ sprite }}#ri-add-line"></use></svg>
+      {{ t('reviews.add') }}
+    </button>
+    <a class="btn btn-ghost" href="{{ url('') }}">
+      <svg class="ef-ico"><use href="{{ sprite }}#ri-arrow-left-line"></use></svg>
+      {{ t('plugins.back') }}
+    </a>
+  </div>
+
+  <p id="rv-status" class="account-ok" hidden></p>
+
+  {# ---- pending queue ---- #}
+  <section class="rv-section">
+    <h2 class="rv-section-h">
+      {{ t('reviews.section_pending') }}
+      <span class="rv-count">{{ pending|length }}</span>
+    </h2>
+    <div class="news-list-wrap">
+      <table class="news-table rv-table">
+        <thead>
+          <tr>
+            <th>{{ t('reviews.col_author') }}</th>
+            <th>{{ t('reviews.col_review') }}</th>
+            <th>{{ t('reviews.col_source') }}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rv-pending-body">
+          {% for r in pending %}
+          <tr data-id="{{ r.id }}">
+            <td class="rv-author"><b>{{ r.name }}</b>{% if r.country %}<span class="rv-meta">{{ r.country }}{% if r.year %}, {{ r.year }}{% endif %}</span>{% endif %}</td>
+            <td class="rv-text">{{ r.text|length > 140 ? r.text|slice(0, 140) ~ '…' : r.text }}</td>
+            <td class="rv-src">{{ r.source }}</td>
+            <td class="news-row-actions">
+              <button type="button" class="btn btn-primary rv-approve" data-id="{{ r.id }}">{{ t('reviews.approve') }}</button>
+              <button type="button" class="btn btn-ghost rv-edit" data-id="{{ r.id }}">{{ t('reviews.edit') }}</button>
+              <button type="button" class="btn btn-ghost rv-reject" data-id="{{ r.id }}">{{ t('reviews.reject') }}</button>
+              <button type="button" class="btn btn-ghost rv-delete" data-id="{{ r.id }}">{{ t('reviews.delete') }}</button>
+            </td>
+          </tr>
+          {% else %}
+          <tr class="rv-empty-row"><td colspan="4">{{ t('reviews.empty_pending') }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="rv-more-wrap" data-target="rv-pending-body" hidden><button type="button" class="btn btn-ghost rv-more">{{ t('reviews.show_more') }}</button></div>
+  </section>
+
+  {# ---- approved ---- #}
+  <section class="rv-section">
+    <h2 class="rv-section-h">
+      {{ t('reviews.section_approved') }}
+      <span class="rv-count">{{ approved|length }}</span>
+    </h2>
+    <div class="news-list-wrap">
+      <table class="news-table rv-table">
+        <thead>
+          <tr>
+            <th>{{ t('reviews.col_author') }}</th>
+            <th>{{ t('reviews.col_review') }}</th>
+            <th>{{ t('reviews.col_source') }}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rv-approved-body">
+          {% for r in approved %}
+          <tr data-id="{{ r.id }}">
+            <td class="rv-author"><b>{{ r.name }}</b>{% if r.country %}<span class="rv-meta">{{ r.country }}{% if r.year %}, {{ r.year }}{% endif %}</span>{% endif %}</td>
+            <td class="rv-text">{{ r.text|length > 140 ? r.text|slice(0, 140) ~ '…' : r.text }}</td>
+            <td class="rv-src">{{ r.source }}</td>
+            <td class="news-row-actions">
+              <button type="button" class="btn btn-ghost rv-edit" data-id="{{ r.id }}">{{ t('reviews.edit') }}</button>
+              <button type="button" class="btn btn-ghost rv-unpublish" data-id="{{ r.id }}">{{ t('reviews.unpublish') }}</button>
+              <button type="button" class="btn btn-ghost rv-delete" data-id="{{ r.id }}">{{ t('reviews.delete') }}</button>
+            </td>
+          </tr>
+          {% else %}
+          <tr class="rv-empty-row"><td colspan="4">{{ t('reviews.empty_approved') }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="rv-more-wrap" data-target="rv-approved-body" hidden><button type="button" class="btn btn-ghost rv-more">{{ t('reviews.show_more') }}</button></div>
+  </section>
+
+  {# ---- rejected (collapsible) ---- #}
+  {% if rejected|length %}
+  <details class="rv-section rv-rejected">
+    <summary class="rv-section-h">{{ t('reviews.section_rejected') }} <span class="rv-count">{{ rejected|length }}</span></summary>
+    <div class="news-list-wrap">
+      <table class="news-table rv-table">
+        <tbody id="rv-rejected-body">
+          {% for r in rejected %}
+          <tr data-id="{{ r.id }}">
+            <td class="rv-author"><b>{{ r.name }}</b>{% if r.country %}<span class="rv-meta">{{ r.country }}</span>{% endif %}</td>
+            <td class="rv-text">{{ r.text|length > 140 ? r.text|slice(0, 140) ~ '…' : r.text }}</td>
+            <td class="news-row-actions">
+              <button type="button" class="btn btn-ghost rv-approve" data-id="{{ r.id }}">{{ t('reviews.approve') }}</button>
+              <button type="button" class="btn btn-ghost rv-edit" data-id="{{ r.id }}">{{ t('reviews.edit') }}</button>
+              <button type="button" class="btn btn-ghost rv-delete" data-id="{{ r.id }}">{{ t('reviews.delete') }}</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="rv-more-wrap" data-target="rv-rejected-body" hidden><button type="button" class="btn btn-ghost rv-more">{{ t('reviews.show_more') }}</button></div>
+  </details>
+  {% endif %}
+</main>
+
+<div class="ef-modal-backdrop rv-edit-backdrop" id="rv-edit-modal" hidden>
+  <div class="ef-modal rv-edit-box" role="dialog" aria-modal="true" aria-labelledby="rv-form-title">
+    <div class="rv-edit-head">
+      <h2 id="rv-form-title">{{ t('reviews.add') }}</h2>
+      <button type="button" class="ef-modal-close" id="rv-edit-close" title="{{ t('common.close') }}" aria-label="{{ t('common.close') }}">
+        <svg class="ef-ico"><use href="{{ sprite }}#ri-close-line"></use></svg>
+      </button>
+    </div>
+    <div class="rv-edit-body">
+      <p class="ef-modal-err" id="rv-edit-err" hidden></p>
+      <form id="rv-form" autocomplete="off">
+        <input type="hidden" name="id" id="rf-id" value="">
+        <div class="rv-form-grid">
+          <label class="field">
+            <span>{{ t('reviews.field_name') }}</span>
+            <input type="text" name="name" id="rf-name" required>
+          </label>
+          <label class="field">
+            <span>{{ t('reviews.field_country') }}</span>
+            <input type="text" name="country" id="rf-country" placeholder="{{ t('reviews.field_country_ph') }}">
+          </label>
+          <label class="field">
+            <span>{{ t('reviews.field_year') }}</span>
+            <input type="text" name="year" id="rf-year" inputmode="numeric" pattern="\d{4}" placeholder="2026">
+          </label>
+          <label class="field">
+            <span>{{ t('reviews.field_status') }}</span>
+            <select name="status" id="rf-status">
+              <option value="approved">{{ t('reviews.status_approved') }}</option>
+              <option value="pending">{{ t('reviews.status_pending') }}</option>
+              <option value="rejected">{{ t('reviews.status_rejected') }}</option>
+            </select>
+          </label>
+        </div>
+        <label class="field field-wide">
+          <span>{{ t('reviews.field_text') }}</span>
+          <textarea name="text" id="rf-text" rows="6" required></textarea>
+        </label>
+        <div class="rv-form-actions">
+          <button type="submit" class="btn btn-primary" id="rf-save">{{ t('reviews.save') }}</button>
+          <button type="button" class="btn btn-ghost" id="rf-cancel">{{ t('common.cancel') }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var CSRF = document.body.getAttribute('data-cms-csrf') || '';
+  var BP = window.__basePath || '';
+  var I18N = {
+    saved: {{ t('reviews.saved')|json_encode|raw }},
+    approvedOk: {{ t('reviews.approved_ok')|json_encode|raw }},
+    rejectedOk: {{ t('reviews.rejected_ok')|json_encode|raw }},
+    unpublishedOk: {{ t('reviews.unpublished_ok')|json_encode|raw }},
+    deleted: {{ t('reviews.deleted')|json_encode|raw }},
+    add: {{ t('reviews.add')|json_encode|raw }},
+    editTitle: {{ t('reviews.edit_title')|json_encode|raw }},
+    confirmDelete: {{ t('reviews.confirm_delete')|json_encode|raw }}
+  };
+
+  function postJson(path, body) {
+    return fetch(BP + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      credentials: 'same-origin',
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; })
+        .then(function (d) { return { status: r.status, data: d }; });
+    });
+  }
+
+  function status(msg, ok) {
+    var el = document.getElementById('rv-status');
+    el.textContent = msg;
+    el.hidden = false;
+    el.className = ok ? 'account-ok' : 'login-error';
+  }
+
+  function reloadSoon() { setTimeout(function () { location.reload(); }, 500); }
+
+  // ---- items cache (full text) for the edit modal -----------------------
+  var ITEMS = {};
+  function loadItems() {
+    return fetch(BP + '/api/reviews', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        ITEMS = {};
+        (d.items || []).forEach(function (it) { ITEMS[it.id] = it; });
+      }).catch(function () {});
+  }
+  loadItems();
+
+  // ---- edit / add modal -------------------------------------------------
+  var modal = document.getElementById('rv-edit-modal');
+  var editErr = document.getElementById('rv-edit-err');
+  function editError(msg) { editErr.textContent = msg || ''; editErr.hidden = !msg; }
+
+  function fillForm(item) {
+    item = item || {};
+    document.getElementById('rf-id').value = item.id || '';
+    document.getElementById('rf-name').value = item.name || '';
+    document.getElementById('rf-country').value = item.country || '';
+    document.getElementById('rf-year').value = item.year || '';
+    document.getElementById('rf-text').value = item.text || '';
+    document.getElementById('rf-status').value = item.status || 'approved';
+    document.getElementById('rv-form-title').textContent = item.id ? I18N.editTitle : I18N.add;
+  }
+  function openAdd() {
+    fillForm({ status: 'approved' });
+    editError('');
+    modal.hidden = false;
+    document.getElementById('rf-name').focus();
+  }
+  function openEdit(item) {
+    fillForm(item);
+    editError('');
+    modal.hidden = false;
+    document.getElementById('rf-text').focus();
+  }
+  function closeModal() { modal.hidden = true; editError(''); }
+
+  document.getElementById('rv-add-btn').addEventListener('click', openAdd);
+  document.getElementById('rv-edit-close').addEventListener('click', closeModal);
+  document.getElementById('rf-cancel').addEventListener('click', closeModal);
+  modal.addEventListener('click', function (e) { if (e.target === modal) { closeModal(); } });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !modal.hidden) { closeModal(); } });
+
+  // ---- row actions (event-delegation over the whole page) ---------------
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.rv-approve, .rv-reject, .rv-unpublish, .rv-delete, .rv-edit');
+    if (!btn) { return; }
+    var id = btn.getAttribute('data-id');
+    if (!id) { return; }
+
+    if (btn.classList.contains('rv-edit')) {
+      var it = ITEMS[id];
+      if (it) { openEdit(it); }
+      else { loadItems().then(function () { if (ITEMS[id]) { openEdit(ITEMS[id]); } }); }
+      return;
+    }
+    if (btn.classList.contains('rv-approve')) {
+      postJson('/api/reviews/approve', { id: id }).then(function (res) {
+        if (res.status === 200 && res.data.ok) { status(I18N.approvedOk, true); reloadSoon(); }
+        else { status((res.data && res.data.error) || 'error', false); }
+      });
+      return;
+    }
+    if (btn.classList.contains('rv-reject')) {
+      postJson('/api/reviews/reject', { id: id }).then(function (res) {
+        if (res.status === 200 && res.data.ok) { status(I18N.rejectedOk, true); reloadSoon(); }
+        else { status((res.data && res.data.error) || 'error', false); }
+      });
+      return;
+    }
+    if (btn.classList.contains('rv-unpublish')) {
+      postJson('/api/reviews/unpublish', { id: id }).then(function (res) {
+        if (res.status === 200 && res.data.ok) { status(I18N.unpublishedOk, true); reloadSoon(); }
+        else { status((res.data && res.data.error) || 'error', false); }
+      });
+      return;
+    }
+    if (btn.classList.contains('rv-delete')) {
+      if (!confirm(I18N.confirmDelete)) { return; }
+      postJson('/api/reviews/delete', { id: id }).then(function (res) {
+        if (res.status === 200 && res.data.ok) { status(I18N.deleted, true); reloadSoon(); }
+        else { status((res.data && res.data.error) || 'error', false); }
+      });
+      return;
+    }
+  });
+
+  // ---- save -------------------------------------------------------------
+  document.getElementById('rv-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var payload = {
+      id: document.getElementById('rf-id').value || '',
+      name: document.getElementById('rf-name').value,
+      country: document.getElementById('rf-country').value,
+      year: document.getElementById('rf-year').value,
+      text: document.getElementById('rf-text').value,
+      status: document.getElementById('rf-status').value
+    };
+    editError('');
+    postJson('/api/reviews', payload).then(function (res) {
+      if (res.status === 200 && res.data.ok) {
+        closeModal();
+        status(I18N.saved, true);
+        reloadSoon();
+      } else {
+        editError((res.data && res.data.error) || 'error');
+      }
+    });
+  });
+
+  // ---- per-table pagination: 25 rows, "Показать ещё" reveals +25 ----------
+  function paginate(wrap) {
+    var body = document.getElementById(wrap.getAttribute('data-target'));
+    if (!body) { return; }
+    var rows = Array.prototype.slice.call(body.querySelectorAll('tr[data-id]'));
+    var PAGE = 25, shown = PAGE;
+    var btn = wrap.querySelector('.rv-more');
+    function apply() {
+      for (var i = 0; i < rows.length; i++) { rows[i].style.display = i < shown ? '' : 'none'; }
+      wrap.hidden = rows.length <= shown;
+    }
+    if (btn) { btn.addEventListener('click', function () { shown += PAGE; apply(); }); }
+    apply();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.rv-more-wrap'), paginate);
+}());
+</script>
+{% endblock %}

@@ -1,0 +1,40 @@
+{
+  "slug": "adopt-before-after",
+  "name": { "ru": "Адаптируемое До/После", "en": "Adopt Before/After" },
+  "version": "1.0.0",
+  "api": "1",
+  "author": "core",
+  "trust": "core",
+  "requires": { "core": ">=1.0", "plugins": [] },
+
+  "assets": {
+    "editor_js": "client/editor.js",
+    "editor_css": "client/editor.css"
+  },
+
+  "server": { "php": "src/AdoptBeforeAfter.php", "class": "EditFront\\Plugins\\AdoptBeforeAfter\\AdoptBeforeAfter" },
+  "i18n": { "ru": "lang/ru.json", "en": "lang/en.json" },
+
+  "fixtures": "fixtures/ops.json",
+
+  "kinds": [{
+    "kind": "adopt-before-after",
+    "label": "До/После",
+    "icon": "client/icon.svg",
+    "needs_runtime": false,
+    "version": 1,
+    "layout": "contents",
+    "props_schema": {
+      "beforeSrc":   { "type": "string", "max": 500, "default": "" },
+      "beforeAlt":   { "type": "string", "max": 300, "default": "" },
+      "beforeLabel": { "type": "string", "max": 60,  "default": "Before" },
+      "afterSrc":    { "type": "string", "max": 500, "default": "" },
+      "afterAlt":    { "type": "string", "max": 300, "default": "" },
+      "afterLabel":  { "type": "string", "max": 60,  "default": "After" }
+    }
+  }],
+
+  "contributions": {
+    "palette": [{ "kind": "adopt-before-after", "group": "content", "order": 61 }]
+  }
+}

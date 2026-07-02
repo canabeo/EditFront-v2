@@ -1,0 +1,11 @@
+/vendor/
+/storage/
+/.env
+/.env.*
+!/.env.example
+/storage/app-secret
+/.phpunit.cache/
+*.tmp.*
+*.bak
+/lang/user/*.json
+!/lang/user/.gitkeep

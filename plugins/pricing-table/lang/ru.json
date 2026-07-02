@@ -1,0 +1,9 @@
+{
+  "plugin.pricing-table.label": "Прайс-таблица",
+  "plugin.pricing-table.currency": "Валюта",
+  "plugin.pricing-table.period": "Период",
+  "plugin.pricing-table.tiers": "Тарифы",
+  "plugin.pricing-table.title": "Название",
+  "plugin.pricing-table.price": "Цена",
+  "plugin.pricing-table.featured": "Выделить"
+}

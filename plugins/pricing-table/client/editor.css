@@ -1,0 +1,3 @@
+/* pricing-table — editor-only styling hooks (the auto-form is themed by the
+ * core; this is reserved for kind-specific tweaks). */
+.ef-pt-tier { transition: box-shadow .15s ease; }

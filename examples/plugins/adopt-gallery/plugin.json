@@ -1,0 +1,43 @@
+{
+  "slug": "adopt-gallery",
+  "name": { "ru": "Адаптируемая галерея", "en": "Adopt Gallery" },
+  "version": "1.0.0",
+  "api": "1",
+  "author": "core",
+  "trust": "core",
+  "requires": { "core": ">=1.0", "plugins": [] },
+
+  "assets": {
+    "editor_js": "client/editor.js",
+    "editor_css": "client/editor.css"
+  },
+
+  "server": { "php": "src/AdoptGallery.php", "class": "EditFront\\Plugins\\AdoptGallery\\AdoptGallery" },
+  "i18n": { "ru": "lang/ru.json", "en": "lang/en.json" },
+
+  "fixtures": "fixtures/ops.json",
+
+  "kinds": [{
+    "kind": "adopt-gallery",
+    "label": "Галерея",
+    "icon": "client/icon.svg",
+    "needs_runtime": false,
+    "version": 1,
+    "layout": "contents",
+    "props_schema": {
+      "title": { "type": "string", "max": 200, "default": "Gallery" },
+      "cover": { "type": "string", "max": 500, "default": "" },
+      "images": {
+        "type": "array", "of": "object", "max": 60,
+        "default": [],
+        "shape": {
+          "src": { "type": "string", "max": 500, "default": "" }
+        }
+      }
+    }
+  }],
+
+  "contributions": {
+    "palette": [{ "kind": "adopt-gallery", "group": "content", "order": 60 }]
+  }
+}

@@ -1,0 +1,85 @@
+{% extends 'base-layout.twig' %}
+
+{% block title %}{{ t('translations.title') }} — EditFront v2{% endblock %}
+
+{% block body %}
+{% set sprite = asset('icons.svg') %}
+<header class="topbar">
+  <div class="brand"><a href="{{ url('') }}">EditFront <span class="v2">v2</span></a></div>
+  <div class="topbar-right">
+    {% if ui_langs()|length > 1 %}{% include '_lang_switcher.twig' %}{% endif %}
+    <span class="user">{{ user }}</span>
+    <form method="post" action="{{ url('logout') }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-ghost">{{ t('dashboard.logout') }}</button>
+    </form>
+  </div>
+</header>
+
+<main class="content">
+  <div class="page-head">
+    <h1>{{ t('translations.heading') }}</h1>
+    <a class="btn btn-ghost" href="{{ url('') }}" style="margin-left:auto"><svg class="ef-ico"><use href="{{ sprite }}#ri-arrow-left-line"></use></svg> {{ t('plugins.back') }}</a>
+  </div>
+
+  <p class="muted">{{ t('translations.intro') }}</p>
+  {% if error %}<p class="login-error">{{ error }}</p>{% endif %}
+  {% if success %}<p class="account-ok">{{ success }}</p>{% endif %}
+
+  <div class="ef-tr-tabs">
+    {% for code in langs %}
+      <a class="ef-tr-tab {{ code == edit ? 'is-active' : '' }}" href="{{ url('settings/translations') }}?edit={{ code }}">{{ code|upper }}</a>
+    {% endfor %}
+    <form method="post" action="{{ url('settings/translations/add-language') }}" class="ef-tr-addlang">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <input type="text" name="code" maxlength="8" pattern="[a-z]{2,8}" placeholder="{{ t('translations.add_lang_ph') }}" autocomplete="off" required>
+      <button type="submit" class="btn btn-ghost">{{ t('translations.add_lang_btn') }}</button>
+    </form>
+  </div>
+
+  <input type="text" id="ef-tr-search" class="ef-tr-search" placeholder="{{ t('translations.search_ph') }}" autocomplete="off">
+
+  <form method="post" action="{{ url('settings/translations') }}" class="ef-tr-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="lang" value="{{ edit }}">
+    <div class="ef-tr-actions">
+      <button type="submit" class="btn btn-primary">{{ t('translations.save') }}</button>
+      <span class="muted">{{ edit|upper }} · {{ t('translations.overrides_count', {n: overrides_count}) }}</span>
+    </div>
+    <table class="ef-tr-table">
+      <thead>
+        <tr>
+          <th>{{ t('translations.key_col') }}</th>
+          <th>{{ t('translations.builtin_col') }}</th>
+          <th>{{ t('translations.override_col') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in rows %}
+        <tr class="ef-tr-row" data-hay="{{ (r.key ~ ' ' ~ r.base)|lower }}">
+          <td class="ef-tr-key"><code>{{ r.key }}</code></td>
+          <td class="ef-tr-base">{{ r.base }}</td>
+          <td class="ef-tr-ovr"><input type="text" name="tr[{{ r.key }}]" value="{{ r.override }}" placeholder="{{ r.base }}" autocomplete="off"></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div class="ef-tr-actions"><button type="submit" class="btn btn-primary">{{ t('translations.save') }}</button></div>
+  </form>
+</main>
+
+<script>
+(function () {
+  var s = document.getElementById('ef-tr-search');
+  if (!s) return;
+  var rows = document.querySelectorAll('.ef-tr-row');
+  s.addEventListener('input', function () {
+    var q = s.value.toLowerCase();
+    rows.forEach(function (row) {
+      var hay = row.getAttribute('data-hay') || '';
+      row.style.display = (q === '' || hay.indexOf(q) !== -1) ? '' : 'none';
+    });
+  });
+})();
+</script>
+{% endblock %}

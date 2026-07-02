@@ -1,0 +1,187 @@
+{% extends 'base-layout.twig' %}
+
+{% block title %}{{ t('dashboard.title') }} — EditFront v2{% endblock %}
+
+{% block body %}
+{% set sprite = asset('icons.svg') %}
+<header class="topbar">
+  <div class="brand">EditFront <span class="v2">v2</span></div>
+  <div class="topbar-right">
+    <a class="btn btn-ghost" href="/" target="_blank" rel="noopener" title="{{ t('dashboard.open_site') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-eye-line"></use></svg> {{ t('dashboard.open_site') }}</a>
+    {% if ui_langs()|length > 1 %}{% include '_lang_switcher.twig' %}{% endif %}
+    <a class="btn btn-ghost" href="{{ url('settings/plugins') }}">{{ t('dashboard.plugins_link') }}</a>
+    <a class="btn btn-ghost" href="{{ url('settings/account') }}">{{ t('dashboard.account_link') }}</a>
+    <a class="btn btn-ghost" href="{{ url('settings/translations') }}">{{ t('dashboard.translations_link') }}</a>
+    <a class="btn btn-ghost" href="{{ url('settings/fonts') }}">{{ t('dashboard.fonts_link') }}</a>
+    <a class="btn btn-ghost" href="{{ url('settings/news') }}">{{ t('dashboard.news_link') }}</a>
+    <a class="btn btn-ghost" href="{{ url('settings/reviews') }}">{{ t('dashboard.reviews_link') }}</a>
+    <span class="user">{{ user }}</span>
+    <form method="post" action="{{ url('logout') }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-ghost">{{ t('dashboard.logout') }}</button>
+    </form>
+  </div>
+</header>
+
+<main class="content">
+  <div class="page-head">
+    <h1>{{ t('dashboard.heading') }}</h1>
+    <span class="muted">{{ t('dashboard.count', {n: pages|length, root: site_root}) }}</span>
+    <button type="button" class="btn btn-primary" id="ef-new-page"><svg class="ef-ico"><use href="{{ sprite }}#ri-add-line"></use></svg> {{ t('pages.new') }}</button>
+  </div>
+
+  <p class="ef-dash-status" id="ef-dash-status" hidden></p>
+
+  {% if pages is empty %}
+  <p class="muted">{{ t('dashboard.empty', {path: site_root}) }}</p>
+  {% else %}
+  <table class="pages">
+    <thead>
+      <tr><th>{{ t('dashboard.col_path') }}</th><th>{{ t('dashboard.col_size') }}</th><th>{{ t('dashboard.col_modified') }}</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for p in pages %}
+      <tr data-page="{{ p.path }}">
+        <td class="path"><a href="/{{ p.path }}" target="_blank" rel="noopener">{{ p.path }}</a></td>
+        <td class="muted">{{ (p.size / 1024)|round(1) }} {{ t('dashboard.kb') }}</td>
+        <td class="muted">{{ p.mtime|date('d.m.Y H:i') }}</td>
+        <td class="actions">
+          <a class="btn btn-ghost" href="/{{ p.path }}" target="_blank" rel="noopener" title="{{ t('dashboard.view_page') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-eye-line"></use></svg></a>
+          <a class="btn" href="{{ url('edit') }}?page={{ p.path|url_encode }}">{{ t('dashboard.edit') }}</a>
+          <button type="button" class="btn btn-ghost ef-dup" title="{{ t('pages.duplicate') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-file-copy-line"></use></svg></button>
+          <button type="button" class="btn btn-ghost ef-del" title="{{ t('pages.delete') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-delete-bin-line"></use></svg></button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</main>
+
+<div class="ef-modal-backdrop" id="ef-page-modal" hidden>
+  <div class="ef-modal" role="dialog" aria-modal="true" aria-labelledby="ef-modal-title">
+    <h2 id="ef-modal-title">{{ t('pages.new_title') }}</h2>
+    <label class="ef-field">
+      <span>{{ t('pages.path_label') }}</span>
+      <input type="text" id="ef-page-path" placeholder="about.html" autocomplete="off" spellcheck="false">
+    </label>
+    <label class="ef-field">
+      <span>{{ t('pages.start_from') }}</span>
+      <select id="ef-page-source">
+        <option value="">{{ t('pages.start_blank') }}</option>
+        {% for p in pages %}<option value="{{ p.path }}">{{ t('pages.start_clone', {path: p.path}) }}</option>{% endfor %}
+      </select>
+    </label>
+    <p class="ef-modal-err" id="ef-modal-err" hidden></p>
+    <div class="ef-modal-actions">
+      <button type="button" class="btn btn-ghost" id="ef-modal-cancel">{{ t('common.cancel') }}</button>
+      <button type="button" class="btn btn-primary" id="ef-modal-ok">{{ t('pages.create') }}</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var CSRF = document.body.getAttribute('data-cms-csrf') || '';
+  var BP = window.__basePath || '';
+  var URLS = {
+    create: BP + '/api/pages/create',
+    duplicate: BP + '/api/pages/duplicate',
+    del: BP + '/api/pages/delete'
+  };
+  var I18N = window.__i18n || {};
+  function t(key, params) {
+    var s = (key in I18N) ? I18N[key] : key;
+    if (params) for (var k in params) s = s.split(':' + k).join(String(params[k]));
+    return s;
+  }
+
+  var modal = document.getElementById('ef-page-modal');
+  var pathInput = document.getElementById('ef-page-path');
+  var sourceSel = document.getElementById('ef-page-source');
+  var modalErr = document.getElementById('ef-modal-err');
+  var status = document.getElementById('ef-dash-status');
+
+  function setStatus(text, kind) {
+    status.textContent = text;
+    status.className = 'ef-dash-status' + (kind ? ' is-' + kind : '');
+    status.hidden = false;
+  }
+
+  function openModal(source, suggested) {
+    modalErr.hidden = true;
+    pathInput.value = suggested || '';
+    sourceSel.value = source || '';
+    modal.hidden = false;
+    pathInput.focus();
+  }
+  function closeModal() { modal.hidden = true; }
+
+  function postJson(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      credentials: 'same-origin',
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, data: d }; });
+    });
+  }
+
+  function suggestName(p) {
+    var slash = p.lastIndexOf('/');
+    var dir = slash >= 0 ? p.slice(0, slash + 1) : '';
+    var base = slash >= 0 ? p.slice(slash + 1) : p;
+    var dot = base.lastIndexOf('.');
+    return dir + (dot > 0 ? base.slice(0, dot) + '-copy' + base.slice(dot) : base + '-copy');
+  }
+
+  document.getElementById('ef-new-page').addEventListener('click', function () { openModal('', ''); });
+  document.getElementById('ef-modal-cancel').addEventListener('click', closeModal);
+  modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+  pathInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    if (e.key === 'Escape') closeModal();
+  });
+
+  document.getElementById('ef-modal-ok').addEventListener('click', submit);
+
+  function submit() {
+    var path = pathInput.value.trim();
+    var source = sourceSel.value;
+    if (!path) { modalErr.textContent = t('pages.path_required'); modalErr.hidden = false; return; }
+    modalErr.hidden = true;
+    postJson(URLS.create, { path: path, source: source }).then(function (r) {
+      if (r.status === 200 && r.data.ok) {
+        closeModal();
+        setStatus(t('pages.created', { path: path }), 'ok');
+        setTimeout(function () { location.reload(); }, 600);
+      } else {
+        modalErr.textContent = r.data.error || ('HTTP ' + r.status);
+        modalErr.hidden = false;
+      }
+    });
+  }
+
+  // per-row duplicate / delete
+  document.querySelectorAll('tr[data-page]').forEach(function (row) {
+    var page = row.getAttribute('data-page');
+    var dup = row.querySelector('.ef-dup');
+    var del = row.querySelector('.ef-del');
+    if (dup) dup.addEventListener('click', function () { openModal(page, suggestName(page)); });
+    if (del) del.addEventListener('click', function () {
+      if (!window.confirm(t('pages.confirm_delete', { path: page }))) return;
+      postJson(URLS.del, { path: page }).then(function (r) {
+        if (r.status === 200 && r.data.ok) {
+          setStatus(t('pages.deleted', { path: page }), 'ok');
+          row.remove();
+        } else {
+          setStatus(r.data.error || ('HTTP ' + r.status), 'error');
+        }
+      });
+    });
+  });
+}());
+</script>
+{% endblock %}

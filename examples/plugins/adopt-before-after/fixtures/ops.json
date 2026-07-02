@@ -1,0 +1,16 @@
+{
+  "_comment": "§6.4.2 — one example per op. No array props → insert + setprop are the required coverage.",
+  "ops": [
+    {
+      "op": "insert",
+      "kind": "adopt-before-after",
+      "forward": { "props": { "beforeSrc": "k/before.jpg", "beforeAlt": "before", "beforeLabel": "Before", "afterSrc": "k/after.jpg", "afterAlt": "after", "afterLabel": "After" } }
+    },
+    {
+      "op": "setprop",
+      "kind": "adopt-before-after",
+      "state_before": { "props": { "beforeSrc": "k/before.jpg", "beforeAlt": "before", "beforeLabel": "Before", "afterSrc": "k/after.jpg", "afterAlt": "after", "afterLabel": "After" } },
+      "forward": { "path": "beforeLabel", "value": "До ремонта" }
+    }
+  ]
+}

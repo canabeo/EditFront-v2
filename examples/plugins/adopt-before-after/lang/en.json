@@ -1,0 +1,8 @@
+{
+  "plugin.adopt-before-after.label": "Before/After",
+  "plugin.adopt-before-after.before": "Before",
+  "plugin.adopt-before-after.after": "After",
+  "plugin.adopt-before-after.caption": "Caption",
+  "plugin.adopt-before-after.alt": "Alt text",
+  "plugin.adopt-before-after.change_image": "Replace image"
+}

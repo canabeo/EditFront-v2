@@ -1,0 +1,34 @@
+{
+  "_comment": "§6.4.2 — one example per op. PluginManager runs inverse(forward(state))≡state and render↔serialize at enable; a failure → read-only degrade.",
+  "ops": [
+    {
+      "op": "insert",
+      "kind": "adopt-gallery",
+      "forward": { "props": { "title": "Kitchen", "cover": "kitchen/a.jpg", "images": [ { "src": "kitchen/a.jpg" }, { "src": "kitchen/b.jpg" } ] } }
+    },
+    {
+      "op": "setprop",
+      "kind": "adopt-gallery",
+      "state_before": { "props": { "title": "Kitchen", "cover": "kitchen/a.jpg", "images": [ { "src": "kitchen/a.jpg" }, { "src": "kitchen/b.jpg" } ] } },
+      "forward": { "path": "title", "value": "Living room" }
+    },
+    {
+      "op": "arrayinsert",
+      "kind": "adopt-gallery",
+      "state_before": { "props": { "title": "Kitchen", "cover": "kitchen/a.jpg", "images": [ { "src": "kitchen/a.jpg" } ] } },
+      "forward": { "path": "images", "index": 1, "item": { "src": "kitchen/c.jpg" } }
+    },
+    {
+      "op": "arrayremove",
+      "kind": "adopt-gallery",
+      "state_before": { "props": { "title": "Kitchen", "cover": "kitchen/a.jpg", "images": [ { "src": "kitchen/a.jpg" }, { "src": "kitchen/b.jpg" } ] } },
+      "forward": { "path": "images", "index": 0 }
+    },
+    {
+      "op": "arraymove",
+      "kind": "adopt-gallery",
+      "state_before": { "props": { "title": "Kitchen", "cover": "kitchen/a.jpg", "images": [ { "src": "kitchen/a.jpg" }, { "src": "kitchen/b.jpg" } ] } },
+      "forward": { "path": "images", "from": 0, "to": 1 }
+    }
+  ]
+}

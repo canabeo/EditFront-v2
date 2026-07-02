@@ -1,0 +1,132 @@
+{
+  "_comment": "What preview-inject.js actually emits, one+ example per op. OperationSchemaParityTest checks every fixture against the server schema (and vice versa: every registered op has a fixture).",
+  "text.set": [
+    {
+      "target": "cms-aaaaaaaaaaaa",
+      "forward": {
+        "html": "<b>Привет</b> мир <a href=\"/x\">ссылка</a>"
+      }
+    }
+  ],
+  "attr.set": [
+    {
+      "target": "cms-aaaaaaaaaaaa",
+      "forward": {
+        "name": "href",
+        "value": "/about.html"
+      }
+    },
+    {
+      "target": "cms-eeeeeeeeeeee",
+      "forward": {
+        "name": "alt",
+        "value": "Описание картинки"
+      }
+    }
+  ],
+  "attr.remove": [
+    {
+      "target": "cms-aaaaaaaaaaaa",
+      "forward": {
+        "name": "title"
+      }
+    }
+  ],
+  "style.set": [
+    {
+      "target": "cms-aaaaaaaaaaaa",
+      "forward": {
+        "prop": "font-size",
+        "value": "1.25em"
+      }
+    },
+    {
+      "target": "cms-aaaaaaaaaaaa",
+      "forward": {
+        "prop": "text-align",
+        "value": ""
+      }
+    }
+  ],
+  "node.insert": [
+    {
+      "target": null,
+      "forward": {
+        "refId": "cms-aaaaaaaaaaaa",
+        "position": "after",
+        "template": "paragraph",
+        "newId": "cms-bbbbbbbbbbbb"
+      }
+    }
+  ],
+  "node.delete": [
+    {
+      "target": "cms-aaaaaaaaaaaa",
+      "forward": {}
+    }
+  ],
+  "node.move": [
+    {
+      "target": "cms-aaaaaaaaaaaa",
+      "forward": {
+        "before": {
+          "parentId": null,
+          "index": 0
+        },
+        "after": {
+          "parentId": null,
+          "index": 1
+        }
+      }
+    },
+    {
+      "target": "cms-aaaaaaaaaaaa",
+      "forward": {
+        "before": {
+          "parentId": null,
+          "index": 0
+        },
+        "after": {
+          "parentId": "cms-dddddddddddd",
+          "index": 0
+        }
+      }
+    }
+  ],
+  "node.duplicate": [
+    {
+      "target": "cms-aaaaaaaaaaaa",
+      "forward": {
+        "newId": "cms-cccccccccccc"
+      }
+    }
+  ],
+  "node.restore": [
+    {
+      "target": null,
+      "forward": {
+        "parentId": null,
+        "index": 0,
+        "html": "<div data-cms-id=\"cms-777777777777\" class=\"restored\"><p data-cms-id=\"cms-888888888888\">восстановлено</p></div>"
+      }
+    }
+  ],
+  "node.replace": [
+    {
+      "target": "cms-dddddddddddd",
+      "forward": {
+        "html": "<h2 data-cms-id=\"cms-dddddddddddd\">second</h2>"
+      }
+    }
+  ],
+  "style.state": [
+    {
+      "target": "cms-aaaaaaaaaaaa",
+      "forward": {
+        "state": "hover",
+        "prop": "color",
+        "value": "red"
+      }
+    }
+  ]
+}

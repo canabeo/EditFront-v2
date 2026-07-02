@@ -1,0 +1,8 @@
+{# §8.6 — explicit RU/EN switcher. href is a fallback; the bootstrap script
+   rewrites it to preserve the current query (e.g. ?page=) before adding ?lang. #}
+<span class="lang-switch">
+{%- for code in ui_langs() -%}
+  {%- if code == locale() -%}<b>{{ code|upper }}</b>
+  {%- else -%}<a data-cms-lang="{{ code }}" href="?lang={{ code }}">{{ code|upper }}</a>{%- endif -%}
+{%- endfor -%}
+</span>

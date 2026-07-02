@@ -1,0 +1,9 @@
+{
+  "plugin.pricing-table.label": "Pricing Table",
+  "plugin.pricing-table.currency": "Currency",
+  "plugin.pricing-table.period": "Period",
+  "plugin.pricing-table.tiers": "Tiers",
+  "plugin.pricing-table.title": "Title",
+  "plugin.pricing-table.price": "Price",
+  "plugin.pricing-table.featured": "Featured"
+}

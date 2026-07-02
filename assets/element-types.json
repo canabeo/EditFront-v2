@@ -1,0 +1,160 @@
+{
+  "version": 1,
+  "actionCatalog": [
+    "editText",
+    "textSize",
+    "align",
+    "link",
+    "imageSrc",
+    "imageAlt",
+    "insertAfter",
+    "duplicate",
+    "moveUp",
+    "moveDown",
+    "delete",
+    "advanced",
+    "background"
+  ],
+  "types": [
+    {
+      "key": "heading",
+      "label": "Заголовок",
+      "match": "h1,h2,h3,h4,h5,h6",
+      "quickActions": [
+        "editText",
+        "align",
+        "duplicate",
+        "delete"
+      ],
+      "more": [
+        "moveUp",
+        "moveDown",
+        "insertAfter",
+        "background",
+        "advanced"
+      ]
+    },
+    {
+      "key": "paragraph",
+      "label": "Абзац",
+      "match": "p",
+      "quickActions": [
+        "editText",
+        "align",
+        "duplicate",
+        "delete"
+      ],
+      "more": [
+        "moveUp",
+        "moveDown",
+        "insertAfter",
+        "background",
+        "advanced"
+      ]
+    },
+    {
+      "key": "button",
+      "label": "Кнопка",
+      "match": "button, a.btn, a[class*='button']",
+      "quickActions": [
+        "editText",
+        "link",
+        "duplicate",
+        "delete"
+      ],
+      "more": [
+        "moveUp",
+        "moveDown",
+        "insertAfter",
+        "background",
+        "advanced"
+      ]
+    },
+    {
+      "key": "link",
+      "label": "Ссылка",
+      "match": "a",
+      "quickActions": [
+        "editText",
+        "link",
+        "duplicate",
+        "delete"
+      ],
+      "more": [
+        "moveUp",
+        "moveDown",
+        "insertAfter",
+        "background",
+        "advanced"
+      ]
+    },
+    {
+      "key": "image",
+      "label": "Картинка",
+      "match": "img",
+      "quickActions": [
+        "imageSrc",
+        "imageAlt",
+        "duplicate",
+        "delete"
+      ],
+      "more": [
+        "moveUp",
+        "moveDown",
+        "insertAfter",
+        "background",
+        "advanced"
+      ]
+    },
+    {
+      "key": "list",
+      "label": "Список",
+      "match": "ul,ol",
+      "quickActions": [
+        "editText",
+        "duplicate",
+        "delete"
+      ],
+      "more": [
+        "moveUp",
+        "moveDown",
+        "insertAfter",
+        "background",
+        "advanced"
+      ]
+    },
+    {
+      "key": "listItem",
+      "label": "Пункт",
+      "match": "li",
+      "quickActions": [
+        "editText",
+        "duplicate",
+        "delete"
+      ],
+      "more": [
+        "moveUp",
+        "moveDown",
+        "background",
+        "advanced"
+      ]
+    },
+    {
+      "key": "generic",
+      "label": "Блок",
+      "match": "*",
+      "quickActions": [
+        "insertAfter",
+        "duplicate",
+        "moveUp",
+        "moveDown",
+        "delete"
+      ],
+      "more": [
+        "align",
+        "background",
+        "advanced"
+      ]
+    }
+  ]
+}

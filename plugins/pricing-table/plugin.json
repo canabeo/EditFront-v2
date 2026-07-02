@@ -1,0 +1,44 @@
+{
+  "slug": "pricing-table",
+  "name": { "ru": "Прайс-таблица", "en": "Pricing Table" },
+  "version": "1.0.0",
+  "api": "1",
+  "author": "core",
+  "trust": "core",
+  "requires": { "core": ">=1.0", "plugins": [] },
+
+  "assets": {
+    "editor_js": "client/editor.js",
+    "editor_css": "client/editor.css"
+  },
+
+  "server": { "php": "src/PricingTable.php", "class": "EditFront\\Plugins\\PricingTable\\PricingTable" },
+  "i18n": { "ru": "lang/ru.json", "en": "lang/en.json" },
+
+  "fixtures": "fixtures/ops.json",
+
+  "kinds": [{
+    "kind": "pricing-table",
+    "label": "Прайс-таблица",
+    "icon": "client/icon.svg",
+    "needs_runtime": false,
+    "version": 1,
+    "props_schema": {
+      "currency": { "type": "enum", "values": ["USD", "EUR", "UAH"], "default": "EUR" },
+      "period":   { "type": "enum", "values": ["mo", "yr"], "default": "mo" },
+      "tiers": {
+        "type": "array", "of": "object", "max": 6,
+        "default": [ { "title": "Базовый", "price": 9, "featured": false } ],
+        "shape": {
+          "title":    { "type": "string", "max": 60, "default": "Тариф" },
+          "price":    { "type": "number", "min": 0, "max": 1000000, "default": 0 },
+          "featured": { "type": "bool", "default": false }
+        }
+      }
+    }
+  }],
+
+  "contributions": {
+    "palette": [{ "kind": "pricing-table", "group": "content", "order": 50 }]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "plugin.adopt-before-after.label": "До/После",
+  "plugin.adopt-before-after.before": "До",
+  "plugin.adopt-before-after.after": "После",
+  "plugin.adopt-before-after.caption": "Подпись",
+  "plugin.adopt-before-after.alt": "Alt-текст",
+  "plugin.adopt-before-after.change_image": "Заменить картинку"
+}

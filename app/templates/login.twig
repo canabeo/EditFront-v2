@@ -1,0 +1,29 @@
+{% extends 'base-layout.twig' %}
+
+{% block title %}{{ t('login.title') }} — EditFront v2{% endblock %}
+
+{% block body %}
+<main class="login-wrap">
+  <form class="login-card" method="post" action="{{ url('login') }}">
+    <h1>EditFront <span class="v2">v2</span></h1>
+    {% if error %}<p class="login-error">{{ error }}</p>{% endif %}
+    <label>
+      <span>{{ t('login.username') }}</span>
+      <input type="text" name="username" autocomplete="username" required autofocus>
+    </label>
+    <label>
+      <span>{{ t('login.password') }}</span>
+      <input type="password" name="password" autocomplete="current-password" required>
+    </label>
+    {% if captcha %}
+    <label>
+      <span>{{ t('login.captcha_label') }}: {{ captcha }} = ?</span>
+      <input type="text" name="captcha" inputmode="numeric" autocomplete="off" required>
+    </label>
+    {% endif %}
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button type="submit">{{ t('login.submit') }}</button>
+    {% if ui_langs()|length > 1 %}{% include '_lang_switcher.twig' %}{% endif %}
+  </form>
+</main>
+{% endblock %}

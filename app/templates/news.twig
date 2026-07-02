@@ -1,0 +1,952 @@
+{% extends 'base-layout.twig' %}
+
+{% block title %}{{ t('news.title') }} — EditFront v2{% endblock %}
+
+{% block body %}
+{% set sprite = asset('icons.svg') %}
+<header class="topbar">
+  <div class="brand"><a href="{{ url('') }}">EditFront <span class="v2">v2</span></a></div>
+  <div class="topbar-right">
+    {% if ui_langs()|length > 1 %}{% include '_lang_switcher.twig' %}{% endif %}
+    <span class="user">{{ user }}</span>
+    <form method="post" action="{{ url('logout') }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-ghost">{{ t('dashboard.logout') }}</button>
+    </form>
+  </div>
+</header>
+
+<main class="content content-wide">
+  <div class="page-head">
+    <h1>{{ t('news.heading') }}</h1>
+    <button type="button" class="btn btn-primary" id="news-add-btn" style="margin-left:auto">
+      <svg class="ef-ico"><use href="{{ sprite }}#ri-add-line"></use></svg>
+      {{ t('news.add') }}
+    </button>
+    <a class="btn btn-ghost" href="{{ url('') }}">
+      <svg class="ef-ico"><use href="{{ sprite }}#ri-arrow-left-line"></use></svg>
+      {{ t('plugins.back') }}
+    </a>
+  </div>
+
+  <p id="news-status" class="account-ok" hidden></p>
+
+  <section class="news-list-wrap">
+    <table class="news-table">
+      <thead>
+        <tr>
+          <th>{{ t('news.field_cover') }}</th>
+          <th>{{ t('news.field_title') }}</th>
+          <th>{{ t('news.field_date') }}</th>
+          <th>{{ t('news.field_category') }}</th>
+          <th>{{ t('news.field_published') }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="news-tbody">
+        {% for item in items %}
+        <tr data-id="{{ item.id }}">
+          <td>
+            {% if item.cover %}
+              <img class="news-thumb" src="{{ item.cover }}" alt="" loading="lazy">
+            {% else %}
+              <span class="news-thumb news-thumb--empty"></span>
+            {% endif %}
+          </td>
+          <td>{{ item.title }}</td>
+          <td>{{ item.date }}</td>
+          <td>{{ item.category }}</td>
+          <td>{{ item.published ? '✓' : '—' }}</td>
+          <td class="news-row-actions">
+            <button type="button" class="btn btn-ghost news-edit"
+                    data-id="{{ item.id }}">{{ t('news.edit') }}</button>
+            <button type="button" class="btn btn-ghost news-delete"
+                    data-id="{{ item.id }}">{{ t('news.delete') }}</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr id="news-empty-row"><td colspan="6">{{ t('news.empty') }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</main>
+
+<div class="ef-modal-backdrop news-edit-backdrop" id="news-edit-modal" hidden>
+  <div class="ef-modal news-edit-modal" role="dialog" aria-modal="true" aria-labelledby="news-form-title">
+    <div class="news-edit-head">
+      <h2 id="news-form-title">{{ t('news.add') }}</h2>
+      <button type="button" class="ef-modal-close" id="news-edit-close" title="{{ t('common.close') }}" aria-label="{{ t('common.close') }}">
+        <svg class="ef-ico"><use href="{{ sprite }}#ri-close-line"></use></svg>
+      </button>
+    </div>
+    <div class="news-edit-body">
+    <p class="ef-modal-err" id="news-edit-err" hidden></p>
+    <form id="news-form" autocomplete="off">
+      <input type="hidden" name="id" id="nf-id" value="">
+
+      <label class="field field-inline">
+        <input type="checkbox" name="published" id="nf-published" value="1" checked>
+        <span>{{ t('news.field_published') }}</span>
+      </label>
+
+      <div class="news-form-grid">
+      <label class="field field-title">
+        <span>{{ t('news.field_title') }}</span>
+        <input type="text" name="title" id="nf-title" required>
+      </label>
+
+      <label class="field">
+        <span>{{ t('news.field_title_short') }}</span>
+        <input type="text" name="title_short" id="nf-title-short"
+               placeholder="{{ t('news.field_title') }}">
+      </label>
+
+      <label class="field">
+        <span>{{ t('news.field_category') }}</span>
+        <input type="text" name="category" id="nf-category">
+      </label>
+
+      <label class="field">
+        <span>{{ t('news.field_date') }}</span>
+        <input type="date" name="date" id="nf-date" required>
+      </label>
+
+      <div class="field">
+        <span>{{ t('news.field_cover') }}</span>
+        <input type="hidden" name="cover" id="nf-cover" value="">
+        <div class="news-cover-picker" data-target="nf-cover">
+          <div class="news-cover-thumb" id="nf-cover-thumb" hidden>
+            <img id="nf-cover-preview" alt="">
+          </div>
+          <div class="news-cover-controls">
+            <button type="button" class="btn btn-ghost news-cover-choose"
+                    data-target="nf-cover" data-preview="nf-cover-preview"
+                    data-thumb="nf-cover-thumb" data-remove="nf-cover-remove">
+              <svg class="ef-ico"><use href="{{ sprite }}#ri-image-line"></use></svg>
+              {{ t('news.cover_choose') }}
+            </button>
+            <button type="button" class="btn btn-ghost news-cover-remove" id="nf-cover-remove"
+                    data-target="nf-cover" data-preview="nf-cover-preview"
+                    data-thumb="nf-cover-thumb" hidden>
+              <svg class="ef-ico"><use href="{{ sprite }}#ri-delete-bin-line"></use></svg>
+              {{ t('news.cover_remove') }}
+            </button>
+            <span class="news-cover-path" id="nf-cover-path"></span>
+          </div>
+        </div>
+        <p class="news-cover-hint">{{ t('news.cover_hint') }}</p>
+      </div>
+
+      <div class="field">
+        <span>{{ t('news.field_cover_og') }}</span>
+        <input type="hidden" name="cover_og" id="nf-cover-og" value="">
+        <div class="news-cover-picker" data-target="nf-cover-og">
+          <div class="news-cover-thumb" id="nf-cover-og-thumb" hidden>
+            <img id="nf-cover-og-preview" alt="">
+          </div>
+          <div class="news-cover-controls">
+            <button type="button" class="btn btn-ghost news-cover-choose"
+                    data-target="nf-cover-og" data-preview="nf-cover-og-preview"
+                    data-thumb="nf-cover-og-thumb" data-remove="nf-cover-og-remove">
+              <svg class="ef-ico"><use href="{{ sprite }}#ri-image-line"></use></svg>
+              {{ t('news.cover_choose_og') }}
+            </button>
+            <button type="button" class="btn btn-ghost news-cover-remove" id="nf-cover-og-remove"
+                    data-target="nf-cover-og" data-preview="nf-cover-og-preview"
+                    data-thumb="nf-cover-og-thumb" hidden>
+              <svg class="ef-ico"><use href="{{ sprite }}#ri-delete-bin-line"></use></svg>
+              {{ t('news.cover_remove') }}
+            </button>
+            <span class="news-cover-path" id="nf-cover-og-path"></span>
+          </div>
+        </div>
+      </div>
+
+      <label class="field field-wide">
+        <span>{{ t('news.field_excerpt') }}</span>
+        <textarea name="excerpt" id="nf-excerpt" rows="3"></textarea>
+      </label>
+
+      <div class="field field-wide">
+        <span>{{ t('news.field_body') }}</span>
+        <div class="news-rt-toolbar" role="toolbar" aria-label="{{ t('news.rt.toolbar') }}">
+          <button type="button" data-rt="p" title="{{ t('news.rt.paragraph') }}" aria-label="{{ t('news.rt.paragraph') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-text"></use></svg>
+          </button>
+          <button type="button" data-rt="h2" title="{{ t('news.rt.h2') }}" aria-label="{{ t('news.rt.h2') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-h-2"></use></svg>
+          </button>
+          <button type="button" data-rt="h3" title="{{ t('news.rt.h3') }}" aria-label="{{ t('news.rt.h3') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-h-3"></use></svg>
+          </button>
+          <span class="news-rt-sep" aria-hidden="true"></span>
+          <button type="button" data-rt="bold" title="{{ t('news.rt.bold') }}" aria-label="{{ t('news.rt.bold') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-bold"></use></svg>
+          </button>
+          <button type="button" data-rt="italic" title="{{ t('news.rt.italic') }}" aria-label="{{ t('news.rt.italic') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-italic"></use></svg>
+          </button>
+          <button type="button" data-rt="underline" title="{{ t('news.rt.underline') }}" aria-label="{{ t('news.rt.underline') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-underline"></use></svg>
+          </button>
+          <span class="news-rt-sep" aria-hidden="true"></span>
+          <button type="button" data-rt="ul" title="{{ t('news.rt.ul') }}" aria-label="{{ t('news.rt.ul') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-list-unordered"></use></svg>
+          </button>
+          <button type="button" data-rt="ol" title="{{ t('news.rt.ol') }}" aria-label="{{ t('news.rt.ol') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-list-ordered"></use></svg>
+          </button>
+          <button type="button" data-rt="blockquote" title="{{ t('news.rt.blockquote') }}" aria-label="{{ t('news.rt.blockquote') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-double-quotes-l"></use></svg>
+          </button>
+          <span class="news-rt-sep" aria-hidden="true"></span>
+          <button type="button" data-rt="link" title="{{ t('news.rt.link') }}" aria-label="{{ t('news.rt.link') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-link"></use></svg>
+          </button>
+          <button type="button" data-rt="image" title="{{ t('news.rt.image') }}" aria-label="{{ t('news.rt.image') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-image-line"></use></svg>
+          </button>
+          <span class="news-rt-sep" aria-hidden="true"></span>
+          <button type="button" data-rt="align-left" title="{{ t('news.rt.align_left') }}" aria-label="{{ t('news.rt.align_left') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-align-left"></use></svg>
+          </button>
+          <button type="button" data-rt="align-center" title="{{ t('news.rt.align_center') }}" aria-label="{{ t('news.rt.align_center') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-align-center"></use></svg>
+          </button>
+          <button type="button" data-rt="align-right" title="{{ t('news.rt.align_right') }}" aria-label="{{ t('news.rt.align_right') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-align-right"></use></svg>
+          </button>
+          <span class="news-rt-sep" aria-hidden="true"></span>
+          <button type="button" data-rt="clear" title="{{ t('news.rt.clear') }}" aria-label="{{ t('news.rt.clear') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-eraser-line"></use></svg>
+          </button>
+          <button type="button" data-rt="undo" title="{{ t('news.rt.undo') }}" aria-label="{{ t('news.rt.undo') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-arrow-go-back-line"></use></svg>
+          </button>
+          <button type="button" data-rt="redo" title="{{ t('news.rt.redo') }}" aria-label="{{ t('news.rt.redo') }}">
+            <svg class="ef-ico"><use href="{{ sprite }}#ri-arrow-go-forward-line"></use></svg>
+          </button>
+        </div>
+        <div id="nf-body-editor" class="news-rt-editor" contenteditable="true"></div>
+        <textarea name="body_html" id="nf-body-html" hidden></textarea>
+      </div>
+
+      <div class="field field-wide">
+        <span>{{ t('news.gallery_section') }}</span>
+        <div class="news-gal-editor">
+          <div class="news-gal-thumbs" id="nf-gallery-thumbs"></div>
+          <p class="news-gal-hint" id="nf-gallery-empty">{{ t('news.gallery_section_empty') }}</p>
+          <div class="news-gal-controls">
+            <button type="button" class="btn btn-ghost" id="nf-gallery-add">
+              <svg class="ef-ico"><use href="{{ sprite }}#ri-add-line"></use></svg>
+              {{ t('news.gallery_add') }}
+            </button>
+            <div class="news-gal-pos" role="group" aria-label="{{ t('news.gallery_position') }}">
+              <span class="news-gal-pos-label">{{ t('news.gallery_position') }}</span>
+              <button type="button" class="btn btn-ghost news-gal-pos-btn" data-pos="before" id="nf-gallery-pos-before">{{ t('news.gallery_pos_before') }}</button>
+              <button type="button" class="btn btn-ghost news-gal-pos-btn" data-pos="after" id="nf-gallery-pos-after">{{ t('news.gallery_pos_after') }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div><!-- /.news-form-grid -->
+
+      <div class="news-form-actions">
+        <button type="submit" class="btn btn-primary" id="nf-save">{{ t('news.save') }}</button>
+        <button type="button" class="btn btn-ghost" id="nf-reset">{{ t('common.cancel') }}</button>
+      </div>
+    </form>
+    </div><!-- /.news-edit-body -->
+  </div><!-- /.news-edit-modal -->
+</div><!-- /#news-edit-modal -->
+
+<div class="ef-modal-backdrop news-gallery-backdrop" id="news-gallery-modal" hidden>
+  <div class="ef-modal news-gallery" role="dialog" aria-modal="true" aria-labelledby="news-gallery-title">
+    <div class="news-gallery-head">
+      <h2 id="news-gallery-title">{{ t('news.gallery_title') }}</h2>
+      <button type="button" class="ef-modal-close" id="news-gallery-close" title="{{ t('common.close') }}">
+        <svg class="ef-ico"><use href="{{ sprite }}#ri-close-line"></use></svg>
+      </button>
+    </div>
+    <div class="news-gallery-actions">
+      <input type="file" id="news-gallery-file" accept="image/*" multiple hidden>
+      <button type="button" class="btn btn-primary" id="news-gallery-upload">
+        <svg class="ef-ico"><use href="{{ sprite }}#ri-add-line"></use></svg>
+        {{ t('news.gallery_upload') }}
+      </button>
+    </div>
+    <p class="ef-modal-err" id="news-gallery-err" hidden></p>
+    <div class="news-gallery-grid" id="news-gallery-grid"></div>
+    <p class="news-gallery-empty" id="news-gallery-empty" hidden>{{ t('news.gallery_empty') }}</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var CSRF = document.body.getAttribute('data-cms-csrf') || '';
+  var BP = window.__basePath || '';
+  var I18N = {
+    saved: {{ t('news.saved')|json_encode|raw }},
+    deleted: {{ t('news.deleted')|json_encode|raw }},
+    add: {{ t('news.add')|json_encode|raw }},
+    edit: {{ t('news.edit')|json_encode|raw }},
+    editTitle: {{ t('news.edit_title')|json_encode|raw }},
+    del: {{ t('news.delete')|json_encode|raw }},
+    empty: {{ t('news.empty')|json_encode|raw }},
+    coverUploaded: {{ t('news.cover_uploaded')|json_encode|raw }},
+    galUp: {{ t('news.gallery_move_up')|json_encode|raw }},
+    galDown: {{ t('news.gallery_move_down')|json_encode|raw }},
+    galRemove: {{ t('news.gallery_remove')|json_encode|raw }}
+  };
+
+  function postJson(path, body) {
+    return fetch(BP + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      credentials: 'same-origin',
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; })
+        .then(function (d) { return { status: r.status, data: d }; });
+    });
+  }
+
+  function status(msg, ok) {
+    var el = document.getElementById('news-status');
+    el.textContent = msg;
+    el.hidden = false;
+    el.className = ok ? 'account-ok' : 'login-error';
+  }
+
+  // ---- light rich-text: execCommand, then read sanitized-ish innerHTML ----
+  // The toolbar drives document.execCommand (deprecated but universally
+  // supported, matching the rest of EditFront). Alignment uses justify* which
+  // emits inline `text-align` styles — the server-side NewsBodySanitizer keeps
+  // ONLY a `text-align:` declaration on block tags, so nothing else leaks. The
+  // image button reuses the gallery modal in "insert" mode (see body-insert).
+  var editor = document.getElementById('nf-body-editor');
+  var hidden = document.getElementById('nf-body-html');
+  function sync() { hidden.value = editor.innerHTML; }
+  editor.addEventListener('input', sync);
+  editor.addEventListener('blur', sync);
+
+  // Caret bookmarking: opening the gallery modal moves focus out of the
+  // editor, collapsing/losing the Range. We capture the current Range on the
+  // image-button click and restore it just before inserting the <img>.
+  var savedRange = null;
+  function saveRange() {
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && editor.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+      savedRange = sel.getRangeAt(0).cloneRange();
+    } else {
+      savedRange = null;
+    }
+  }
+  function restoreRange() {
+    editor.focus();
+    var sel = window.getSelection();
+    if (!sel) { return; }
+    sel.removeAllRanges();
+    if (savedRange) {
+      sel.addRange(savedRange);
+    } else {
+      // no saved caret → append at the very end of the editor
+      var r = document.createRange();
+      r.selectNodeContents(editor);
+      r.collapse(false);
+      sel.addRange(r);
+    }
+  }
+
+  // Insert an <img class="ef-news-img"> at the (restored) caret. The element
+  // mirrors exactly what NewsBodySanitizer keeps: class + src + alt + loading.
+  function insertBodyImage(url) {
+    if (!url) { return; }
+    restoreRange();
+    var img = document.createElement('img');
+    img.className = 'ef-news-img';
+    img.src = url;
+    img.alt = '';
+    img.setAttribute('loading', 'lazy');
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      var range = sel.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(img);
+      // move caret just after the inserted image
+      range.setStartAfter(img);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } else {
+      editor.appendChild(img);
+    }
+    savedRange = null;
+    sync();
+  }
+
+  document.querySelectorAll('.news-rt-toolbar button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var cmd = btn.getAttribute('data-rt');
+      // image insert must capture the caret BEFORE focus leaves for the modal
+      if (cmd === 'image') {
+        saveRange();
+        openGalleryForBody();
+        return;
+      }
+      editor.focus();
+      if (cmd === 'p') { document.execCommand('formatBlock', false, 'p'); }
+      else if (cmd === 'h2') { document.execCommand('formatBlock', false, 'h2'); }
+      else if (cmd === 'h3') { document.execCommand('formatBlock', false, 'h3'); }
+      else if (cmd === 'bold') { document.execCommand('bold'); }
+      else if (cmd === 'italic') { document.execCommand('italic'); }
+      else if (cmd === 'underline') { document.execCommand('underline'); }
+      else if (cmd === 'ul') { document.execCommand('insertUnorderedList'); }
+      else if (cmd === 'ol') { document.execCommand('insertOrderedList'); }
+      else if (cmd === 'blockquote') { document.execCommand('formatBlock', false, 'blockquote'); }
+      else if (cmd === 'align-left') { document.execCommand('justifyLeft'); }
+      else if (cmd === 'align-center') { document.execCommand('justifyCenter'); }
+      else if (cmd === 'align-right') { document.execCommand('justifyRight'); }
+      else if (cmd === 'clear') { document.execCommand('removeFormat'); }
+      else if (cmd === 'undo') { document.execCommand('undo'); }
+      else if (cmd === 'redo') { document.execCommand('redo'); }
+      else if (cmd === 'link') {
+        var u = prompt({{ t('news.rt.link_prompt')|json_encode|raw }});
+        if (u) { document.execCommand('createLink', false, u); }
+      }
+      sync();
+    });
+  });
+
+  // ---- cover field <-> preview helpers ----------------------------------
+  // A "cover field" = hidden #nf-cover (or #nf-cover-og) holding the URL, plus
+  // a thumb wrapper, an <img> preview, a path label and a Remove button.
+  // setCover() is the single source of truth: it writes the hidden input and
+  // mirrors the value into the preview/remove-button state, so SELECT, UPLOAD
+  // and fillForm all converge on it and the subsequent Save reads name="cover".
+  var FIELDS = {
+    'nf-cover': {
+      input: 'nf-cover', preview: 'nf-cover-preview', thumb: 'nf-cover-thumb',
+      remove: 'nf-cover-remove', path: 'nf-cover-path'
+    },
+    'nf-cover-og': {
+      input: 'nf-cover-og', preview: 'nf-cover-og-preview', thumb: 'nf-cover-og-thumb',
+      remove: 'nf-cover-og-remove', path: 'nf-cover-og-path'
+    }
+  };
+
+  function setCover(targetId, url) {
+    var f = FIELDS[targetId];
+    if (!f) { return; }
+    url = url || '';
+    var input = document.getElementById(f.input);
+    var preview = document.getElementById(f.preview);
+    var thumb = document.getElementById(f.thumb);
+    var remove = document.getElementById(f.remove);
+    var path = document.getElementById(f.path);
+    if (input) { input.value = url; }
+    if (url) {
+      if (preview) { preview.src = url; }
+      if (thumb) { thumb.hidden = false; }
+      if (remove) { remove.hidden = false; }
+      if (path) { path.textContent = url; }
+    } else {
+      if (preview) { preview.removeAttribute('src'); }
+      if (thumb) { thumb.hidden = true; }
+      if (remove) { remove.hidden = true; }
+      if (path) { path.textContent = ''; }
+    }
+  }
+
+  // Remove buttons clear their field.
+  document.querySelectorAll('.news-cover-remove').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      setCover(btn.getAttribute('data-target'), '');
+    });
+  });
+
+  // ---- image gallery modal (shared by cover + OG) -----------------------
+  var gModal = document.getElementById('news-gallery-modal');
+  var gGrid = document.getElementById('news-gallery-grid');
+  var gEmpty = document.getElementById('news-gallery-empty');
+  var gErr = document.getElementById('news-gallery-err');
+  var gFile = document.getElementById('news-gallery-file');
+  // The modal serves three destinations:
+  //   mode 'field'        → write the URL into a cover field (gActiveTarget id),
+  //   mode 'body'         → insert an <img class="ef-news-img"> at the editor caret,
+  //   mode 'gallery-add'  → APPEND the URL to the news gallery list (stays open
+  //                         so multiple images can be added in one session).
+  var gMode = 'field';
+  var gActiveTarget = null; // which field opened the modal (field mode)
+
+  function gError(msg) {
+    if (!gErr) { return; }
+    gErr.textContent = msg || '';
+    gErr.hidden = !msg;
+  }
+
+  function openGallery(targetId) {
+    gMode = 'field';
+    gActiveTarget = targetId;
+    gError('');
+    gModal.hidden = false;
+    loadGallery();
+  }
+  // Open the SAME modal to insert into the body editor. The caret Range was
+  // already captured (saveRange) by the toolbar image button before focus left.
+  function openGalleryForBody() {
+    gMode = 'body';
+    gActiveTarget = null;
+    gError('');
+    gModal.hidden = false;
+    loadGallery();
+  }
+  // Open the SAME modal to APPEND images to the news gallery list. Stays open
+  // after each pick so multiple images can be added without re-opening.
+  function openGalleryForGallery() {
+    gMode = 'gallery-add';
+    gActiveTarget = null;
+    gError('');
+    gModal.hidden = false;
+    loadGallery();
+  }
+  function closeGallery() {
+    gModal.hidden = true;
+    gMode = 'field';
+    gActiveTarget = null;
+  }
+
+  // Clicking a thumbnail routes the chosen image to whatever opened the modal:
+  // a cover field, the body editor at the saved caret, or the gallery list.
+  function selectImage(url) {
+    if (gMode === 'gallery-add') {
+      addGalleryImage(url);
+      return; // keep the modal open for further picks
+    }
+    if (gMode === 'body') {
+      insertBodyImage(url);
+    } else if (gActiveTarget) {
+      setCover(gActiveTarget, url);
+    }
+    closeGallery();
+  }
+
+  function renderGallery(images) {
+    gGrid.textContent = '';
+    if (!images || !images.length) {
+      gEmpty.hidden = false;
+      return;
+    }
+    gEmpty.hidden = true;
+    images.forEach(function (img) {
+      if (!img || !img.url) { return; }
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'news-gallery-thumb';
+      btn.title = img.name || img.url;
+      var im = document.createElement('img');
+      im.src = img.url;
+      im.alt = img.name || '';
+      im.loading = 'lazy';
+      btn.appendChild(im);
+      btn.addEventListener('click', function () { selectImage(img.url); });
+      gGrid.appendChild(btn);
+    });
+  }
+
+  function loadGallery() {
+    gGrid.textContent = '';
+    gEmpty.hidden = true;
+    fetch(BP + '/api/images', { credentials: 'same-origin' })
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (d) { renderGallery((d && d.images) || []); })
+      .catch(function () { gError('Failed to load gallery'); });
+  }
+
+  // Prepend a freshly-uploaded image to the grid and select it immediately.
+  function prependImage(url, name) {
+    if (gEmpty) { gEmpty.hidden = true; }
+    selectImage(url); // sets field + closes modal
+  }
+
+  // Open the modal from either Choose button.
+  document.querySelectorAll('.news-cover-choose').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      openGallery(btn.getAttribute('data-target'));
+    });
+  });
+
+  document.getElementById('news-gallery-close').addEventListener('click', closeGallery);
+  gModal.addEventListener('click', function (e) { if (e.target === gModal) { closeGallery(); } });
+  document.addEventListener('keydown', function (e) {
+    // Gallery modal is the nested/top overlay: when it's open, Escape closes ONLY
+    // it (stop the edit-modal's later-registered Escape handler from also firing).
+    if (e.key === 'Escape' && !gModal.hidden) {
+      e.stopImmediatePropagation();
+      closeGallery();
+    }
+  });
+
+  // Upload-new: pick a file, POST /api/upload, then prepend + select.
+  document.getElementById('news-gallery-upload').addEventListener('click', function () {
+    gError('');
+    gFile.click();
+  });
+  // POST a single File to /api/upload, resolving to { ok, url, name, error }.
+  function uploadOne(file) {
+    var fd = new FormData();
+    fd.append('file', file);
+    return fetch(BP + '/api/upload', {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': CSRF },
+      credentials: 'same-origin',
+      body: fd
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; })
+        .then(function (d) {
+          if (r.status === 200 && d && d.url) {
+            return { ok: true, url: d.url, name: d.name };
+          }
+          return { ok: false, error: (d && d.error) || ('HTTP ' + r.status) };
+        });
+    }).catch(function () { return { ok: false, error: 'upload failed' }; });
+  }
+
+  // File <input> change: in 'gallery-add' mode upload ALL selected files and
+  // APPEND each successful URL to the news gallery list (modal stays open). In
+  // the single-target modes (cover / OG field, body editor) upload only the
+  // first file, then select it into the destination + close. Per-file failures
+  // are surfaced (which file failed) but never abort the remaining uploads.
+  gFile.addEventListener('change', function () {
+    var files = gFile.files;
+    if (!files || !files.length) { return; }
+    gError('');
+
+    if (gMode === 'gallery-add') {
+      var list = Array.prototype.slice.call(files);
+      gFile.value = ''; // reset early so the same files can be re-picked later
+      var failed = [];
+      // upload sequentially so the gallery order follows pick order and we
+      // never fire a burst that trips the upload rate-limit.
+      var chain = Promise.resolve();
+      list.forEach(function (file) {
+        chain = chain.then(function () {
+          return uploadOne(file).then(function (res) {
+            if (res.ok) {
+              addGalleryImage(res.url); // APPEND + re-render thumbs
+            } else {
+              failed.push((file.name || 'file') + ': ' + res.error);
+            }
+          });
+        });
+      });
+      chain.then(function () {
+        if (failed.length) {
+          gError(failed.join('; '));
+        } else {
+          status(I18N.coverUploaded, true);
+        }
+      });
+      return;
+    }
+
+    // single-target modes: cover / OG field or body editor — first file only.
+    var one = files[0];
+    gFile.value = '';
+    uploadOne(one).then(function (res) {
+      if (res.ok) {
+        status(I18N.coverUploaded, true);
+        prependImage(res.url, res.name); // selects into the active dest + closes modal
+      } else {
+        gError(res.error || 'upload failed');
+      }
+    });
+  });
+
+  // ---- news gallery editor ----------------------------------------------
+  // GALLERY is the ordered list of image URLs persisted as item.gallery; the
+  // thumbnails mirror it 1:1. GALLERY_POSITION is 'before' | 'after' (default
+  // 'after'). Both feed the save payload and are loaded back by fillForm.
+  var GALLERY = [];
+  var GALLERY_POSITION = 'after';
+  var galThumbs = document.getElementById('nf-gallery-thumbs');
+  var galEmpty = document.getElementById('nf-gallery-empty');
+
+  function renderGalleryThumbs() {
+    galThumbs.textContent = '';
+    if (!GALLERY.length) {
+      galEmpty.hidden = false;
+      return;
+    }
+    galEmpty.hidden = true;
+    GALLERY.forEach(function (url, i) {
+      var cell = document.createElement('div');
+      cell.className = 'news-gal-thumb';
+
+      var im = document.createElement('img');
+      im.src = url;
+      im.alt = '';
+      im.loading = 'lazy';
+      cell.appendChild(im);
+
+      var bar = document.createElement('div');
+      bar.className = 'news-gal-thumb-bar';
+
+      var up = mkGalBtn('ri-arrow-up-line', I18N.galUp);
+      up.disabled = (i === 0);
+      up.addEventListener('click', function () { moveGalleryImage(i, -1); });
+
+      var down = mkGalBtn('ri-arrow-down-line', I18N.galDown);
+      down.disabled = (i === GALLERY.length - 1);
+      down.addEventListener('click', function () { moveGalleryImage(i, 1); });
+
+      var rm = mkGalBtn('ri-close-line', I18N.galRemove);
+      rm.classList.add('news-gal-thumb-remove');
+      rm.addEventListener('click', function () { removeGalleryImage(i); });
+
+      bar.appendChild(up);
+      bar.appendChild(down);
+      bar.appendChild(rm);
+      cell.appendChild(bar);
+      galThumbs.appendChild(cell);
+    });
+  }
+
+  function mkGalBtn(icon, label) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'news-gal-thumb-btn';
+    b.title = label || '';
+    b.setAttribute('aria-label', label || '');
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'ef-ico');
+    var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', {{ sprite|json_encode|raw }} + '#' + icon);
+    use.setAttribute('href', {{ sprite|json_encode|raw }} + '#' + icon);
+    svg.appendChild(use);
+    b.appendChild(svg);
+    return b;
+  }
+
+  function addGalleryImage(url) {
+    if (!url) { return; }
+    GALLERY.push(url);
+    renderGalleryThumbs();
+  }
+  function removeGalleryImage(i) {
+    GALLERY.splice(i, 1);
+    renderGalleryThumbs();
+  }
+  function moveGalleryImage(i, delta) {
+    var j = i + delta;
+    if (j < 0 || j >= GALLERY.length) { return; }
+    var tmp = GALLERY[i];
+    GALLERY[i] = GALLERY[j];
+    GALLERY[j] = tmp;
+    renderGalleryThumbs();
+  }
+
+  function setGalleryPosition(pos) {
+    GALLERY_POSITION = (pos === 'before') ? 'before' : 'after';
+    document.getElementById('nf-gallery-pos-before')
+      .classList.toggle('is-active', GALLERY_POSITION === 'before');
+    document.getElementById('nf-gallery-pos-after')
+      .classList.toggle('is-active', GALLERY_POSITION === 'after');
+  }
+
+  document.getElementById('nf-gallery-add').addEventListener('click', openGalleryForGallery);
+  document.querySelectorAll('.news-gal-pos-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () { setGalleryPosition(btn.getAttribute('data-pos')); });
+  });
+
+  // ---- form fill / reset ----
+  function fillForm(item) {
+    document.getElementById('nf-id').value = item.id || '';
+    document.getElementById('nf-title').value = item.title || '';
+    document.getElementById('nf-title-short').value = item.title_short || '';
+    document.getElementById('nf-category').value = item.category || '';
+    document.getElementById('nf-date').value = item.date || '';
+    setCover('nf-cover', item.cover || '');       // shows existing cover + remove btn
+    setCover('nf-cover-og', item.cover_og || '');
+    document.getElementById('nf-excerpt').value = item.excerpt || '';
+    editor.innerHTML = item.body_html || '';
+    hidden.value = item.body_html || '';
+    document.getElementById('nf-published').checked = item.published !== false;
+    // gallery: copy the stored list (clone so edits don't mutate ITEMS cache)
+    GALLERY = Array.isArray(item.gallery) ? item.gallery.slice() : [];
+    setGalleryPosition(item.gallery_position === 'before' ? 'before' : 'after');
+    renderGalleryThumbs();
+    document.getElementById('news-form-title').textContent = item.id ? I18N.editTitle : I18N.add;
+  }
+  function resetForm() { fillForm({}); }
+
+  // ---- edit/add modal (separate window from the list) -------------------
+  // The whole #news-form lives inside #news-edit-modal now. Open it in add-mode
+  // (resetForm first) from the "Add" button, or in edit-mode (fillForm first)
+  // from a row's Edit button. Cancel / × / Esc / backdrop close it (discard).
+  var editModal = document.getElementById('news-edit-modal');
+  var editErr = document.getElementById('news-edit-err');
+  function editError(msg) {
+    if (!editErr) { return; }
+    editErr.textContent = msg || '';
+    editErr.hidden = !msg;
+  }
+  function openEditModalAdd() {
+    resetForm();
+    editError('');
+    editModal.hidden = false;
+    var t = document.getElementById('nf-title');
+    if (t) { t.focus(); }
+  }
+  function openEditModalEdit(item) {
+    fillForm(item);
+    editError('');
+    editModal.hidden = false;
+    var t = document.getElementById('nf-title');
+    if (t) { t.focus(); }
+  }
+  function closeEditModal() {
+    editModal.hidden = true;
+    editError('');
+  }
+  document.getElementById('news-add-btn').addEventListener('click', openEditModalAdd);
+  document.getElementById('news-edit-close').addEventListener('click', closeEditModal);
+  document.getElementById('nf-reset').addEventListener('click', closeEditModal);
+  // Backdrop click closes (but ignore clicks that bubble from the gallery modal,
+  // which is a sibling overlay rendered above this one).
+  editModal.addEventListener('click', function (e) {
+    if (e.target === editModal) { closeEditModal(); }
+  });
+  // Esc closes the edit modal — but only when the gallery modal (the nested,
+  // higher overlay) is not itself open; that one handles Esc first and returns.
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !editModal.hidden && gModal.hidden) { closeEditModal(); }
+  });
+
+  // ---- load full item for edit + render the list -----------------------
+  // /api/news returns the full items (the SSR table only has summary cols), so
+  // we cache them by id (for Edit) AND re-render the tbody from the same data.
+  // After a successful Save the modal closes and refreshList() re-fetches so the
+  // table reflects the change without a full page reload.
+  var ITEMS = {};
+  var tbody = document.getElementById('news-tbody');
+
+  // Build one <tr> mirroring the server-side row markup (data-id, summary cols,
+  // Edit/Delete buttons). Text is set via textContent → no HTML injection.
+  function buildRow(it) {
+    var tr = document.createElement('tr');
+    tr.setAttribute('data-id', it.id);
+    var tdImg = document.createElement('td');
+    if (it.cover) {
+      var im = document.createElement('img');
+      im.className = 'news-thumb'; im.src = it.cover; im.alt = ''; im.loading = 'lazy';
+      tdImg.appendChild(im);
+    } else {
+      var ph = document.createElement('span');
+      ph.className = 'news-thumb news-thumb--empty';
+      tdImg.appendChild(ph);
+    }
+    tr.appendChild(tdImg);
+    var tdT = document.createElement('td'); tdT.textContent = it.title || ''; tr.appendChild(tdT);
+    var tdD = document.createElement('td'); tdD.textContent = it.date || ''; tr.appendChild(tdD);
+    var tdC = document.createElement('td'); tdC.textContent = it.category || ''; tr.appendChild(tdC);
+    var tdP = document.createElement('td'); tdP.textContent = (it.published !== false) ? '✓' : '—'; tr.appendChild(tdP);
+    var tdA = document.createElement('td'); tdA.className = 'news-row-actions';
+    var eb = document.createElement('button');
+    eb.type = 'button'; eb.className = 'btn btn-ghost news-edit';
+    eb.setAttribute('data-id', it.id); eb.textContent = I18N.edit;
+    var db = document.createElement('button');
+    db.type = 'button'; db.className = 'btn btn-ghost news-delete';
+    db.setAttribute('data-id', it.id); db.textContent = I18N.del;
+    tdA.appendChild(eb); tdA.appendChild(db);
+    tr.appendChild(tdA);
+    return tr;
+  }
+
+  function renderRows(items) {
+    tbody.textContent = '';
+    if (!items || !items.length) {
+      var tr = document.createElement('tr');
+      tr.id = 'news-empty-row';
+      var td = document.createElement('td');
+      td.setAttribute('colspan', '6');
+      td.textContent = I18N.empty;
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+    items.forEach(function (it) { tbody.appendChild(buildRow(it)); });
+  }
+
+  function loadItems() {
+    return fetch(BP + '/api/news', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        ITEMS = {};
+        var list = d.items || [];
+        list.forEach(function (it) { ITEMS[it.id] = it; });
+        return list;
+      });
+  }
+  // Re-fetch and re-render the table (used after Save).
+  function refreshList() {
+    return loadItems().then(function (list) { renderRows(list); });
+  }
+  loadItems();
+
+  document.getElementById('news-tbody').addEventListener('click', function (e) {
+    var editBtn = e.target.closest('.news-edit');
+    var delBtn = e.target.closest('.news-delete');
+    if (editBtn) {
+      var it = ITEMS[editBtn.getAttribute('data-id')];
+      if (it) { openEditModalEdit(it); }
+    } else if (delBtn) {
+      var id = delBtn.getAttribute('data-id');
+      if (!confirm('?')) { return; }
+      postJson('/api/news/delete', { id: id }).then(function (res) {
+        if (res.status === 200 && res.data.ok) {
+          status(I18N.deleted, true);
+          setTimeout(function () { location.reload(); }, 600);
+        } else {
+          status((res.data && res.data.error) || 'error', false);
+        }
+      });
+    }
+  });
+
+  // ---- save ----
+  document.getElementById('news-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    sync();
+    var payload = {
+      id: document.getElementById('nf-id').value || '',
+      title: document.getElementById('nf-title').value,
+      title_short: document.getElementById('nf-title-short').value,
+      category: document.getElementById('nf-category').value,
+      date: document.getElementById('nf-date').value,
+      cover: document.getElementById('nf-cover').value,
+      cover_og: document.getElementById('nf-cover-og').value,
+      excerpt: document.getElementById('nf-excerpt').value,
+      body_html: hidden.value,
+      gallery: GALLERY.slice(),
+      gallery_position: GALLERY_POSITION,
+      published: document.getElementById('nf-published').checked
+    };
+    editError('');
+    postJson('/api/news', payload).then(function (res) {
+      if (res.status === 200 && res.data.ok) {
+        closeEditModal();          // success → close the edit window
+        status(I18N.saved, true);
+        refreshList();             // re-fetch + re-render the table in place
+      } else {
+        // error → keep the modal open so the user can fix and retry; show the
+        // message INSIDE the modal (the list status banner is behind the overlay)
+        editError((res.data && res.data.error) || 'error');
+      }
+    });
+  });
+}());
+</script>
+{% endblock %}

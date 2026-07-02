@@ -1,0 +1,46 @@
+{% extends 'base-layout.twig' %}
+
+{% block title %}{{ t('account.title') }} — EditFront v2{% endblock %}
+
+{% block body %}
+{% set sprite = asset('icons.svg') %}
+<header class="topbar">
+  <div class="brand"><a href="{{ url('') }}">EditFront <span class="v2">v2</span></a></div>
+  <div class="topbar-right">
+    {% if ui_langs()|length > 1 %}{% include '_lang_switcher.twig' %}{% endif %}
+    <span class="user">{{ user }}</span>
+    <form method="post" action="{{ url('logout') }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-ghost">{{ t('dashboard.logout') }}</button>
+    </form>
+  </div>
+</header>
+
+<main class="content">
+  <div class="page-head">
+    <h1>{{ t('account.heading') }}</h1>
+    <a class="btn btn-ghost" href="{{ url('') }}" style="margin-left:auto"><svg class="ef-ico"><use href="{{ sprite }}#ri-arrow-left-line"></use></svg> {{ t('plugins.back') }}</a>
+  </div>
+
+  {% if error %}<p class="login-error">{{ error }}</p>{% endif %}
+  {% if success %}<p class="account-ok">{{ success }}</p>{% endif %}
+
+  <form class="account-form" method="post" action="{{ url('settings/account') }}" autocomplete="off">
+    <p class="muted">{{ t('account.signed_in_as') }} <strong>{{ user }}</strong></p>
+    <label>
+      <span>{{ t('account.current') }}</span>
+      <input type="password" name="current" autocomplete="current-password" required>
+    </label>
+    <label>
+      <span>{{ t('account.new') }}</span>
+      <input type="password" name="new" autocomplete="new-password" minlength="8" required>
+    </label>
+    <label>
+      <span>{{ t('account.confirm') }}</span>
+      <input type="password" name="confirm" autocomplete="new-password" minlength="8" required>
+    </label>
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-primary">{{ t('account.submit') }}</button>
+  </form>
+</main>
+{% endblock %}

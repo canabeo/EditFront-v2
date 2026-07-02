@@ -1,0 +1,9 @@
+{
+  "plugin.adopt-gallery.label": "Галерея",
+  "plugin.adopt-gallery.title": "Заголовок",
+  "plugin.adopt-gallery.cover": "Обложка",
+  "plugin.adopt-gallery.images": "Картинки",
+  "plugin.adopt-gallery.add_image": "+ Добавить картинку",
+  "plugin.adopt-gallery.set_cover": "Сделать обложкой",
+  "plugin.adopt-gallery.cover_hint": "Клик по картинке — сделать обложкой"
+}

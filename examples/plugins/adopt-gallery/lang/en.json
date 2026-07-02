@@ -1,0 +1,9 @@
+{
+  "plugin.adopt-gallery.label": "Gallery",
+  "plugin.adopt-gallery.title": "Title",
+  "plugin.adopt-gallery.cover": "Cover",
+  "plugin.adopt-gallery.images": "Images",
+  "plugin.adopt-gallery.add_image": "+ Add image",
+  "plugin.adopt-gallery.set_cover": "Set as cover",
+  "plugin.adopt-gallery.cover_hint": "Click an image to make it the cover"
+}

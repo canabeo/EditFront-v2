@@ -1,0 +1,152 @@
+{% extends 'base-layout.twig' %}
+
+{% block title %}{{ t('plugins.title') }} — EditFront v2{% endblock %}
+
+{% block body %}
+{% set sprite = asset('icons.svg') %}
+<header class="topbar">
+  <div class="brand"><a href="{{ url('') }}">EditFront <span class="v2">v2</span></a></div>
+  <div class="topbar-right">
+    {% if ui_langs()|length > 1 %}{% include '_lang_switcher.twig' %}{% endif %}
+    <span class="user">{{ user }}</span>
+    <form method="post" action="{{ url('logout') }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-ghost">{{ t('dashboard.logout') }}</button>
+    </form>
+  </div>
+</header>
+
+<main class="content">
+  <div class="page-head">
+    <h1>{{ t('plugins.heading') }}</h1>
+    <a class="btn btn-ghost" href="{{ url('') }}" style="margin-left:auto"><svg class="ef-ico"><use href="{{ sprite }}#ri-arrow-left-line"></use></svg> {{ t('plugins.back') }}</a>
+  </div>
+
+  <p class="ef-dash-status" id="ef-plugin-status" hidden></p>
+
+  {% if plugins is empty %}
+  <p class="muted">{{ t('plugins.empty') }}</p>
+  {% else %}
+  <table class="pages">
+    <thead>
+      <tr>
+        <th>{{ t('plugins.col_name') }}</th>
+        <th>{{ t('plugins.col_version') }}</th>
+        <th>{{ t('plugins.col_kinds') }}</th>
+        <th>{{ t('plugins.col_status') }}</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in plugins %}
+      <tr data-slug="{{ p.slug }}">
+        <td>
+          <strong>{{ p.name[locale()]|default(p.name.en)|default(p.slug) }}</strong>
+          <div class="muted" style="font-size:.8rem">{{ p.slug }} · {{ t('plugins.trust') }}: {{ p.trust }}</div>
+        </td>
+        <td class="muted">{{ p.version }}</td>
+        <td class="muted">{{ p.kinds|join(', ') }}</td>
+        <td>
+          <span class="ef-plugin-badge ef-badge--{{ p.status }}">{{ t('plugins.status_' ~ p.status) }}</span>
+          {% if p.reason %}<div class="muted" style="font-size:.78rem;margin-top:2px">{{ p.reason }}</div>{% endif %}
+        </td>
+        <td class="actions">
+          {% if p.enabled %}
+          <button type="button" class="btn ef-toggle" data-enabled="0">{{ t('plugins.disable') }}</button>
+          {% else %}
+          <button type="button" class="btn btn-primary ef-toggle" data-enabled="1">{{ t('plugins.enable') }}</button>
+          {% endif %}
+          <button type="button" class="btn btn-ghost ef-uninstall" title="{{ t('plugins.uninstall') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-delete-bin-line"></use></svg></button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <section class="ef-plugin-upload">
+    <h2>{{ t('plugins.upload_title') }}</h2>
+    <p class="muted">{{ t('plugins.upload_hint') }}</p>
+    <label class="ef-plugin-drop" id="ef-plugin-drop">
+      <span id="ef-plugin-drop-label">{{ t('plugins.upload_btn') }}</span>
+      <input type="file" id="ef-plugin-file" accept=".zip,application/zip" hidden>
+    </label>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var CSRF = document.body.getAttribute('data-cms-csrf') || '';
+  var BP = window.__basePath || '';
+  var I18N = window.__i18n || {};
+  function t(key, params) {
+    var s = (key in I18N) ? I18N[key] : key;
+    if (params) for (var k in params) s = s.split(':' + k).join(String(params[k]));
+    return s;
+  }
+  var status = document.getElementById('ef-plugin-status');
+  function setStatus(text, kind) {
+    status.textContent = text;
+    status.className = 'ef-dash-status' + (kind ? ' is-' + kind : '');
+    status.hidden = false;
+  }
+  function postJson(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      credentials: 'same-origin',
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, data: d }; }); });
+  }
+
+  document.querySelectorAll('tr[data-slug]').forEach(function (row) {
+    var slug = row.getAttribute('data-slug');
+    var toggle = row.querySelector('.ef-toggle');
+    var uninstall = row.querySelector('.ef-uninstall');
+    if (toggle) toggle.addEventListener('click', function () {
+      var enabled = toggle.getAttribute('data-enabled') === '1';
+      toggle.disabled = true;
+      postJson(BP + '/api/plugins/toggle', { slug: slug, enabled: enabled }).then(function (r) {
+        if (r.status === 200 && r.data.ok) { location.reload(); }
+        else { setStatus(r.data.error || ('HTTP ' + r.status), 'error'); toggle.disabled = false; }
+      });
+    });
+    if (uninstall) uninstall.addEventListener('click', function () {
+      if (!window.confirm(t('plugins.confirm_uninstall', { slug: slug }))) return;
+      postJson(BP + '/api/plugins/uninstall', { slug: slug }).then(function (r) {
+        if (r.status === 200 && r.data.ok) { setStatus(t('plugins.uninstalled', { slug: slug }), 'ok'); row.remove(); }
+        else { setStatus(r.data.error || ('HTTP ' + r.status), 'error'); }
+      });
+    });
+  });
+
+  var drop = document.getElementById('ef-plugin-drop');
+  var fileInput = document.getElementById('ef-plugin-file');
+  function uploadZip(file) {
+    if (!file) return;
+    setStatus(t('common.loading'), '');
+    var fd = new FormData();
+    fd.append('file', file);
+    fetch(BP + '/api/plugins/install', {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': CSRF },
+      credentials: 'same-origin',
+      body: fd
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, data: d }; }); })
+      .then(function (r) {
+        if (r.status === 200 && r.data.ok) {
+          setStatus(t('plugins.installed', { slug: r.data.slug }), 'ok');
+          setTimeout(function () { location.reload(); }, 700);
+        } else {
+          setStatus(r.data.error || ('HTTP ' + r.status), 'error');
+        }
+      }).catch(function (e) { setStatus(String(e && e.message || e), 'error'); });
+  }
+  fileInput.addEventListener('change', function () { uploadZip(fileInput.files && fileInput.files[0]); });
+  ['dragover', 'dragenter'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('is-over'); }); });
+  ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('is-over'); }); });
+  drop.addEventListener('drop', function (e) { if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) uploadZip(e.dataTransfer.files[0]); });
+}());
+</script>
+{% endblock %}

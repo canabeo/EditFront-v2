@@ -1,0 +1,19 @@
+{
+  "slug": "broken-invert",
+  "name": { "en": "Broken Invert" },
+  "version": "1.0.0",
+  "api": "1",
+  "author": "local",
+  "trust": "local",
+  "server": { "php": "src/BrokenBlock.php", "class": "EditFront\\Plugins\\BrokenInvert\\BrokenBlock" },
+  "fixtures": "fixtures/ops.json",
+  "kinds": [{
+    "kind": "broken-block",
+    "label": "Broken",
+    "version": 1,
+    "props_schema": {
+      "label": { "type": "string", "max": 40, "default": "" },
+      "count": { "type": "number", "min": 0, "max": 100, "default": 0 }
+    }
+  }]
+}

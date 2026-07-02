@@ -1,0 +1,46 @@
+{# Single bootstrap partial for ALL pages — editor included (§4.6 anti-trap:
+   never duplicate these globals in a standalone template). i18n injection +
+   the no-FOUC first-visit language detect live here, one source of truth (§8.3). #}
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<script>
+window.__basePath = {{ base_path|json_encode|raw }};
+window.__locale   = {{ locale()|json_encode|raw }};
+window.__i18n     = {{ i18n_json()|raw }};
+(function () {
+  // language-switcher links keep the current query and just (re)set ?lang
+  function fixSwitch() {
+    var links = document.querySelectorAll('a[data-cms-lang]');
+    for (var i = 0; i < links.length; i++) {
+      try {
+        var u = new URL(location.href);
+        u.searchParams.set('lang', links[i].getAttribute('data-cms-lang'));
+        links[i].href = u.pathname + u.search;
+      } catch (e) {}
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fixSwitch);
+  else fixSwitch();
+
+  // no-FOUC (§8.1): only on the FIRST visit (no cms_lang cookie) and only when the
+  // navigator language disagrees with the SSR locale → set cookie + ONE silent reload
+  // (the user has not seen any UI text yet, so there is no visible ru↔en flip).
+  if (/(^|;)\s*cms_lang=/.test(document.cookie)) return;
+  var sup = {{ ui_langs()|json_encode|raw }};
+  var nav = (navigator.languages && navigator.languages[0]) || navigator.language || '';
+  var want = (/^ru/i.test(nav) && sup.indexOf('ru') >= 0) ? 'ru' : 'en';
+  if (want !== window.__locale) {
+    // one-shot guard: a client that cannot persist the cookie reloads AT MOST once,
+    // never in a loop (§8.1 "at most one silent reload, never a loop")
+    try {
+      if (sessionStorage.getItem('cms_lang_tried')) return;
+      sessionStorage.setItem('cms_lang_tried', '1');
+    } catch (e) {}
+    document.cookie = 'cms_lang=' + want + '; Path=' + (window.__basePath || '/')
+      + '; Max-Age=31536000; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
+    // only reload if the cookie actually stuck — otherwise render in the SSR locale
+    if (/(^|;)\s*cms_lang=/.test(document.cookie)) location.replace(location.href);
+  }
+}());
+</script>

@@ -1,0 +1,34 @@
+{
+  "_comment": "One example per op (§6.4.2). PluginManager runs inverse(forward(state_before)) ≡ state_before at enable; a failure → read-only degrade, never a broken undo at runtime.",
+  "ops": [
+    {
+      "op": "insert",
+      "kind": "pricing-table",
+      "forward": { "props": { "currency": "EUR", "period": "mo", "tiers": [ { "title": "Basic", "price": 9, "featured": false } ] } }
+    },
+    {
+      "op": "setprop",
+      "kind": "pricing-table",
+      "state_before": { "props": { "currency": "EUR", "period": "mo", "tiers": [ { "title": "Basic", "price": 9, "featured": false }, { "title": "Pro", "price": 19, "featured": true } ] } },
+      "forward": { "path": "tiers.1.price", "value": 29 }
+    },
+    {
+      "op": "arrayinsert",
+      "kind": "pricing-table",
+      "state_before": { "props": { "currency": "EUR", "period": "mo", "tiers": [ { "title": "Basic", "price": 9, "featured": false }, { "title": "Pro", "price": 19, "featured": true } ] } },
+      "forward": { "path": "tiers", "index": 1, "item": { "title": "Team", "price": 49, "featured": false } }
+    },
+    {
+      "op": "arrayremove",
+      "kind": "pricing-table",
+      "state_before": { "props": { "currency": "EUR", "period": "mo", "tiers": [ { "title": "Basic", "price": 9, "featured": false }, { "title": "Pro", "price": 19, "featured": true } ] } },
+      "forward": { "path": "tiers", "index": 0 }
+    },
+    {
+      "op": "arraymove",
+      "kind": "pricing-table",
+      "state_before": { "props": { "currency": "EUR", "period": "mo", "tiers": [ { "title": "Basic", "price": 9, "featured": false }, { "title": "Pro", "price": 19, "featured": true } ] } },
+      "forward": { "path": "tiers", "from": 0, "to": 1 }
+    }
+  ]
+}

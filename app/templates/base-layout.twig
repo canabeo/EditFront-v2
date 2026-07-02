@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="{{ locale() }}">
+<head>
+{% include '_bootstrap_head.twig' %}
+<title>{% block title %}EditFront v2{% endblock %}</title>
+<link rel="stylesheet" href="{{ asset('admin.css') }}">
+{% block head_extra %}{% endblock %}
+</head>
+<body data-cms-csrf="{{ csrf_token() }}">
+{% block body %}{% endblock %}
+</body>
+</html>

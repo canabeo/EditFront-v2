@@ -1,0 +1,29 @@
+# EditFront v2 — Apache front controller + internals deny.
+# Deny rules go BEFORE the front-controller rewrite (v1 lesson:
+# a deny placed after the [L] catch-all never fires).
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+
+# CMS internals are never web content (relative patterns = basePath-independent)
+RewriteRule ^(app|storage|vendor|tests|docs|lang)(/|$) - [R=404,L]
+# Plugin manifests and PHP sources stay private; assets/ and client/ remain reachable
+RewriteRule ^plugins/.+\.(json|php)$ - [R=404,L]
+
+# Front controller
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]
+</IfModule>
+
+# No mod_rewrite → the front controller cannot route; fail closed
+<IfModule !mod_rewrite.c>
+Require all denied
+</IfModule>
+
+# Dotfiles, dependency manifests, docs and PHP-FPM ini are not web content.
+# (.json is NOT blanket-denied — assets/element-types.json must stay reachable.)
+<FilesMatch "^(\.env.*|\.user\.ini|composer\.(json|lock)|phpunit\.xml.*|.*\.md)$">
+Require all denied
+</FilesMatch>
