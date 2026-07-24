@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 470" width="1200" height="470" role="img" aria-label="EditFront v2 — click an element on your existing HTML page and a small context panel appears. Flat-file, drop-in CMS. No database, no build step.">
+  <title>EditFront v2 — edit the static HTML site you already have, by clicking on it</title>
+
+  <defs>
+    <style>
+      .sans { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      .mono { font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+    </style>
+    <clipPath id="pageClip"><rect x="616" y="88" width="520" height="330" rx="10"/></clipPath>
+  </defs>
+
+  <rect width="1200" height="470" fill="#ffffff"/>
+
+  <!-- ============ left: name + value ============ -->
+  <text class="sans" x="64" y="150" font-size="62" font-weight="700" fill="#1f2937">EditFront</text>
+  <text class="sans" x="352" y="150" font-size="62" font-weight="300" fill="#2563eb">v2</text>
+
+  <text class="sans" x="64" y="206" font-size="27" font-weight="600" fill="#1f2937">Edit the static HTML site</text>
+  <text class="sans" x="64" y="243" font-size="27" font-weight="600" fill="#1f2937">you already have — by clicking on it.</text>
+
+  <text class="sans" x="64" y="292" font-size="20" fill="#6b7280">Flat-file, drop-in CMS. No database, no build step.</text>
+  <text class="sans" x="64" y="322" font-size="20" fill="#6b7280">Remove the folder and your site is exactly as it was.</text>
+
+  <!-- meta chips -->
+  <g>
+    <rect x="64" y="360" width="104" height="34" rx="8" fill="#f5f6f8" stroke="#e5e7eb"/>
+    <text class="sans" x="116" y="383" font-size="18" fill="#6b7280" text-anchor="middle">PHP 8.2+</text>
+
+    <rect x="180" y="360" width="128" height="34" rx="8" fill="#f5f6f8" stroke="#e5e7eb"/>
+    <text class="sans" x="244" y="383" font-size="18" fill="#6b7280" text-anchor="middle">No database</text>
+
+    <rect x="320" y="360" width="88" height="34" rx="8" fill="#f5f6f8" stroke="#e5e7eb"/>
+    <text class="sans" x="364" y="383" font-size="18" fill="#6b7280" text-anchor="middle">MIT</text>
+  </g>
+
+  <!-- ============ right: the page being edited ============ -->
+  <rect x="616" y="88" width="520" height="330" rx="10" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.5"/>
+
+  <!-- editor toolbar -->
+  <rect x="616" y="88" width="520" height="46" rx="10" fill="#ffffff"/>
+  <rect x="616" y="122" width="520" height="12" fill="#ffffff"/>
+  <line x1="616" y1="134" x2="1136" y2="134" stroke="#e5e7eb" stroke-width="1.5"/>
+
+  <text class="mono" x="638" y="117" font-size="18" fill="#1f2937">index.html</text>
+
+  <!-- selected-element pill (mirrors the real toolbar) -->
+  <rect x="766" y="99" width="122" height="26" rx="13" fill="#eff4ff" stroke="#2563eb" stroke-opacity="0.35"/>
+  <text class="sans" x="827" y="117" font-size="16" fill="#2563eb" text-anchor="middle">Heading</text>
+
+  <!-- ready status -->
+  <circle cx="944" cy="112" r="5" fill="#16a34a"/>
+  <text class="sans" x="958" y="118" font-size="16" fill="#16a34a">Ready</text>
+
+  <!-- save button -->
+  <rect x="1054" y="99" width="66" height="27" rx="7" fill="#2563eb"/>
+  <text class="sans" x="1087" y="118" font-size="16" font-weight="600" fill="#ffffff" text-anchor="middle">Save</text>
+
+  <!-- page content underneath -->
+  <g clip-path="url(#pageClip)">
+    <rect x="616" y="135" width="520" height="283" fill="#f5f6f8"/>
+
+    <!-- site nav -->
+    <rect x="644" y="158" width="58" height="10" rx="5" fill="#d5d9e0"/>
+    <rect x="714" y="158" width="76" height="10" rx="5" fill="#d5d9e0"/>
+    <rect x="802" y="158" width="64" height="10" rx="5" fill="#d5d9e0"/>
+    <rect x="878" y="158" width="70" height="10" rx="5" fill="#d5d9e0"/>
+
+    <!-- the selected heading block -->
+    <rect x="644" y="222" width="330" height="82" rx="3" fill="#ffffff"/>
+    <rect x="662" y="240" width="252" height="20" rx="4" fill="#c9ced7"/>
+    <rect x="662" y="272" width="176" height="20" rx="4" fill="#c9ced7"/>
+
+    <!-- selection outline — the product's core motif -->
+    <rect x="644" y="222" width="330" height="82" rx="3" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+
+    <!-- floating context panel: appears on demand, only relevant actions -->
+    <rect x="644" y="180" width="196" height="34" rx="7" fill="#1f2937"/>
+    <text class="sans" x="685" y="202" font-size="16" fill="#ffffff" text-anchor="middle">Heading</text>
+    <line x1="726" y1="188" x2="726" y2="206" stroke="#4b5563" stroke-width="1.5"/>
+    <!-- pencil -->
+    <path d="M741 202 l12 -12 4 4 -12 12 -5 1 z" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
+    <!-- align -->
+    <g stroke="#ffffff" stroke-width="1.6" stroke-linecap="round">
+      <line x1="770" y1="192" x2="786" y2="192"/>
+      <line x1="770" y1="197" x2="782" y2="197"/>
+      <line x1="770" y1="202" x2="786" y2="202"/>
+    </g>
+    <!-- duplicate -->
+    <rect x="800" y="191" width="10" height="10" rx="2" fill="none" stroke="#ffffff" stroke-width="1.6"/>
+    <rect x="804" y="195" width="10" height="10" rx="2" fill="none" stroke="#ffffff" stroke-width="1.6"/>
+    <!-- trash -->
+    <g stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" fill="none">
+      <line x1="824" y1="192" x2="836" y2="192"/>
+      <path d="M826 195 v9 M830 195 v9 M834 195 v9"/>
+      <path d="M825 192 l1 12 h8 l1 -12"/>
+    </g>
+
+    <!-- body copy under the selection -->
+    <rect x="644" y="326" width="300" height="9" rx="4.5" fill="#dfe3e9"/>
+    <rect x="644" y="344" width="242" height="9" rx="4.5" fill="#dfe3e9"/>
+
+    <!-- a cta block, greyed -->
+    <rect x="644" y="374" width="112" height="30" rx="6" fill="#dfe3e9"/>
+  </g>
+
+  <!-- caption under the mock -->
+  <text class="sans" x="616" y="444" font-size="17" fill="#6b7280">Click an element — only the actions that make sense for it appear.</text>
+</svg>

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 280" width="1200" height="280" role="img" aria-label="Save pipeline: your page on disk, then a pre-save backup, then an atomic write, then your page updated in place. No backup means no save.">
+  <title>EditFront v2 — every save is fail-closed</title>
+
+  <defs>
+    <style>
+      .sans { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      .mono { font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#9aa3af"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="280" fill="#ffffff"/>
+
+  <text class="sans" x="64" y="52" font-size="26" font-weight="700" fill="#1f2937">Every save is fail-closed</text>
+  <text class="sans" x="64" y="84" font-size="19" fill="#6b7280">The CMS rewrites your real file — so it never writes without a snapshot to fall back to.</text>
+
+  <!-- 1 — your page -->
+  <rect x="64" y="118" width="212" height="94" rx="10" fill="#f5f6f8" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text class="mono" x="88" y="156" font-size="19" fill="#1f2937">about.html</text>
+  <text class="sans" x="88" y="184" font-size="18" fill="#6b7280">your page, on disk</text>
+
+  <line x1="288" y1="165" x2="326" y2="165" stroke="#9aa3af" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- 2 — the gate -->
+  <rect x="338" y="118" width="240" height="94" rx="10" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+  <text class="sans" x="362" y="156" font-size="19" font-weight="600" fill="#2563eb">Pre-save backup</text>
+  <text class="sans" x="362" y="184" font-size="18" fill="#6b7280">before every write</text>
+
+  <line x1="590" y1="165" x2="628" y2="165" stroke="#9aa3af" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- 3 — atomic -->
+  <rect x="640" y="118" width="228" height="94" rx="10" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text class="sans" x="664" y="156" font-size="19" font-weight="600" fill="#1f2937">Atomic write</text>
+  <text class="sans" x="664" y="184" font-size="18" fill="#6b7280">no half-written files</text>
+
+  <line x1="880" y1="165" x2="918" y2="165" stroke="#9aa3af" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- 4 — result -->
+  <rect x="930" y="118" width="206" height="94" rx="10" fill="#f5f6f8" stroke="#e5e7eb" stroke-width="1.5"/>
+  <text class="mono" x="954" y="156" font-size="19" fill="#1f2937">about.html</text>
+  <text class="sans" x="954" y="184" font-size="18" fill="#16a34a">updated in place</text>
+
+  <!-- the rule -->
+  <text class="sans" x="64" y="252" font-size="19">
+    <tspan font-weight="700" fill="#dc2626">No backup, no save.</tspan><tspan fill="#6b7280" dx="12">Restore rolls any page back — and backs up the current version first.</tspan>
+  </text>
+</svg>
