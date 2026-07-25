@@ -10,6 +10,7 @@ use EditFront\Document\Html5;
 use EditFront\Document\TagAnnotatorLite;
 use EditFront\Storage\BackupService;
 use EditFront\Storage\FileStorage;
+use EditFront\Storage\PagesIndex;
 use EditFront\Storage\PathGuard;
 use EditFront\Storage\StorageException;
 use EditFront\Support\Config;
@@ -40,7 +41,8 @@ final class DocumentServiceTest extends TestCase
             new Html5(),
             $annotator,
             new TagAnnotatorLite($annotator),
-            new BackupService($config)
+            new BackupService($config),
+            new PagesIndex($config)
         );
     }
 
@@ -97,5 +99,57 @@ final class DocumentServiceTest extends TestCase
             // expected
         }
         $this->assertSame($original, (string) file_get_contents($this->site . '/page.html'));
+    }
+
+    /**
+     * Bug 2 (MEDIUM, CWE-352 + CWE-20): opening a page WRITES to it (ids are
+     * stamped to disk) and happens on a GET, which CsrfMiddleware does not cover
+     * by design (WRITE_METHODS is POST/PUT/PATCH/DELETE). The session cookie is
+     * SameSite=Lax, so a top-level navigation from an attacker's page carries
+     * it: a logged-in admin merely following a link to /edit?page=<file> had
+     * that file rewritten through the HTML5 parser. No click inside the editor
+     * needed. Anything containing markup was a target — .svg, .xml, templates.
+     */
+    public function test_open_refuses_files_that_are_not_pages(): void
+    {
+        file_put_contents($this->site . '/logo.svg', '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>');
+        $before = (string) file_get_contents($this->site . '/logo.svg');
+
+        try {
+            $this->service()->openForEdit('logo.svg');
+            $this->fail('expected a non-page file to be refused');
+        } catch (StorageException $e) {
+            $this->assertStringContainsString('not an editable page', $e->getMessage());
+        }
+
+        // untouched, byte for byte
+        $this->assertSame($before, (string) file_get_contents($this->site . '/logo.svg'));
+    }
+
+    public function test_open_refuses_an_html_file_that_is_not_a_listed_page(): void
+    {
+        // .html, but hidden away where the index does not look
+        @mkdir($this->site . '/.private', 0777, true);
+        file_put_contents($this->site . '/.private/secret.html', '<p>secret</p>');
+        $before = (string) file_get_contents($this->site . '/.private/secret.html');
+
+        try {
+            $this->service()->openForEdit('.private/secret.html');
+            $this->fail('expected an unlisted page to be refused');
+        } catch (StorageException $e) {
+            $this->assertStringContainsString('not a known page', $e->getMessage());
+        }
+
+        $this->assertSame($before, (string) file_get_contents($this->site . '/.private/secret.html'));
+    }
+
+    public function test_open_still_works_for_a_page_created_moments_ago(): void
+    {
+        // guards the index-cache fallback: a fresh page must not 404
+        $this->service()->openForEdit('page.html');           // warms the cache
+        file_put_contents($this->site . '/brandnew.html', '<h1>new</h1>');
+
+        $html = $this->service()->openForEdit('brandnew.html');
+        $this->assertStringContainsString('<h1', $html);
     }
 }

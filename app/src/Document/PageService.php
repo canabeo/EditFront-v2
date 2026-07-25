@@ -29,8 +29,12 @@ use EditFront\Support\Config;
  */
 final class PageService
 {
-    /** matches the spec basename rule; the dir part (if any) must already exist */
-    private const NAME_RE = '~^[a-zA-Z0-9][a-zA-Z0-9_.\-]{0,99}\.html?$~';
+    /**
+     * Matches the spec basename rule; the dir part (if any) must already exist.
+     * Public because DocumentService gates editor opens on the same rule — one
+     * definition, so the two can never drift apart.
+     */
+    public const NAME_RE = '~^[a-zA-Z0-9][a-zA-Z0-9_.\-]{0,99}\.html?$~';
 
     private const BLANK = "<!doctype html>\n<html lang=\"ru\">\n<head>\n"
         . "<meta charset=\"utf-8\">\n"
