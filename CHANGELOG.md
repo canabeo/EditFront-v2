@@ -3,6 +3,49 @@
 All notable changes to EditFront v2 are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] — 2026-07-25
+
+A security release. Every item was found by an external review of 1.0.0, then
+reproduced against the code and fixed with a regression test. Upgrading is
+recommended for every installation.
+
+### Fixed — reachable without an account
+- The install wizard stayed open on an instance provisioned through `.env`.
+  `isInstalled()` only asked whether `storage/admin.json` existed, and that file
+  is created on the first successful login — so a deployment configured but not
+  yet logged into could be claimed by whoever reached `/install` first.
+- `storage/` sits inside the document root and was protected only by the bundled
+  `.htaccess`, which nginx ignores. The project now ships `nginx.conf.example`,
+  and the install wizard verifies from your browser that `storage/` is not
+  downloadable before it will create the administrator.
+- `sitemap.xml` walked and HTML-parsed the entire site on every anonymous
+  request. It is now cached on disk and rate-limited, and the indexability check
+  no longer parses pages that cannot carry a robots directive.
+
+### Fixed — the CMS could be turned against its own site
+- Page delete accepted any path under the site root, including the CMS's own
+  credential file — which re-opened the install wizard. Delete now applies the
+  same name rule as create.
+- `FileStorage` could reach into the CMS folder at all, because the site root
+  contains it and no traversal is needed to get there. One chokepoint now
+  refuses any path inside the CMS, closing the delete case above, the "publish
+  `.env` as a page" case, and anything of that shape in future.
+- Opening a page in the editor writes to it, on a GET, which CSRF cannot cover.
+  Following a link was enough to have an arbitrary file rewritten through the
+  HTML parser. Only real pages of the site may be opened now.
+
+### Fixed — content that reaches visitors
+- `attr.set` used a deny-list, so `srcdoc` passed every check and could put
+  executable HTML into a published page. It is an allow-list now.
+- The editor preview ran same-origin and unsandboxed, so any third-party script
+  on the page being edited — analytics, a chat widget — ran inside the admin and
+  could act as the logged-in administrator. The preview is now sandboxed, its
+  API calls go through the shell, and the CSRF token never enters it.
+
+### Editor
+- Fonts and the icon sprite render correctly inside the sandboxed preview, so
+  the editor still shows the page as visitors see it.
+
 ## [1.0.0] — 2026-07-02
 
 First public release. A flat-file, drop-in CMS for visual editing of existing
@@ -57,4 +100,5 @@ static HTML sites — no database, no build step.
 - Layered HTML/CSS/URL/SVG sanitizers on all content that reaches public pages.
 - Bundled `.htaccess` denies web access to internals.
 
+[1.0.1]: https://github.com/canabeo/EditFront-v2/releases/tag/v1.0.1
 [1.0.0]: https://github.com/canabeo/EditFront-v2/releases/tag/v1.0.0
