@@ -15,6 +15,13 @@ use EditFront\Support\Config;
  */
 final class SelfCheck
 {
+    /**
+     * Canary written into storage/ so the wizard can prove, from the browser,
+     * that the directory is not served over HTTP. Deliberately NOT a dotfile:
+     * it has to be as reachable as admin.json is, or the probe proves nothing.
+     */
+    private const CANARY = 'webcheck.txt';
+
     public function __construct(
         private readonly Config $config,
         private readonly EnvFile $env,
@@ -78,6 +85,51 @@ final class SelfCheck
         $checks[] = $this->probe('base_path', true, false, $bp === '' ? '/' : $bp);
 
         return $checks;
+    }
+
+    /**
+     * Prepare the storage-exposure probe: drop a canary with a random token into
+     * storage/ and return the URL the browser should fetch. On Apache the
+     * bundled .htaccess denies storage/; nginx ignores .htaccess entirely, so on
+     * a misconfigured nginx deployment storage/admin.json (the password hash) is
+     * public. The wizard fetches this URL client-side — a server-side loopback
+     * request would risk deadlocking the only PHP-FPM worker on cheap hosting.
+     *
+     * @return array{url: string, token: string}|null null when storage lives
+     *   outside the CMS folder (no URL can reach it) or the canary is unwritable
+     */
+    public function prepareExposureProbe(): ?array
+    {
+        $storageReal = realpath($this->config->storageDir());
+        $cmsReal = realpath($this->config->cmsDir());
+        if ($storageReal === false || $cmsReal === false) {
+            return null;
+        }
+        $prefix = rtrim($cmsReal, '/\\') . DIRECTORY_SEPARATOR;
+        if (!str_starts_with($storageReal, $prefix)) {
+            return null; // storage moved out of the document root — nothing to probe
+        }
+
+        $token = bin2hex(random_bytes(16));
+        if (@file_put_contents($storageReal . DIRECTORY_SEPARATOR . self::CANARY, $token) === false) {
+            return null;
+        }
+        @chmod($storageReal . DIRECTORY_SEPARATOR . self::CANARY, 0640);
+
+        $rel = str_replace(DIRECTORY_SEPARATOR, '/', substr($storageReal, strlen($prefix)));
+        return [
+            'url' => $this->config->basePath() . '/' . $rel . '/' . self::CANARY,
+            'token' => $token,
+        ];
+    }
+
+    /** Remove the canary once the wizard is done with it. */
+    public function clearExposureProbe(): void
+    {
+        $storageReal = realpath($this->config->storageDir());
+        if ($storageReal !== false) {
+            @unlink($storageReal . DIRECTORY_SEPARATOR . self::CANARY);
+        }
     }
 
     public function canProceed(): bool

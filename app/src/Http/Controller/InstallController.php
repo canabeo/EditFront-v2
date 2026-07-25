@@ -46,6 +46,7 @@ final class InstallController
             'checks' => $checks,
             'can_proceed' => $this->selfCheck->canProceed(),
             'pages_count' => count($this->pages->list(true)),
+            'probe' => $this->selfCheck->prepareExposureProbe(),
         ]));
         return $response->withHeader('Content-Type', 'text/html; charset=utf-8');
     }
@@ -74,6 +75,7 @@ final class InstallController
             return $this->json($response, 422, ['error' => 'install failed']);
         }
 
+        $this->selfCheck->clearExposureProbe();
         $this->logger->info('install.ok', ['user' => $username, 'secret' => $result['secret_persisted']]);
         return $this->json($response, 200, [
             'ok' => true,

@@ -1,0 +1,89 @@
+# EditFront v2 — nginx reference configuration.
+#
+# The bundled .htaccess protects the CMS on Apache. nginx ignores .htaccess
+# entirely, so on nginx THESE RULES ARE THE ONLY THING standing between the
+# public internet and storage/admin.json (your password hash) and .env.
+#
+# Adapt server_name / root / the PHP socket, keep the deny blocks as they are.
+# This example assumes the CMS was unpacked into <site root>/cms/.
+# If you installed it elsewhere, replace /cms/ throughout and set BASE_PATH
+# in .env to match.
+#
+# After applying: nginx -t && systemctl reload nginx, then confirm
+#   curl -i https://example.com/cms/storage/admin.json     → 404
+#   curl -i https://example.com/cms/.env                   → 404
+#   curl -i https://example.com/cms/login                  → 200
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name example.com;
+
+    # The SITE root — your HTML pages. The CMS lives in the cms/ subfolder.
+    root /var/www/example.com;
+    index index.html;
+
+    # ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+
+    # ---- CMS internals: never web content --------------------------------
+    # Mirrors the deny list in the bundled .htaccess. Placed BEFORE the
+    # front-controller location so they always win.
+
+    # Dotfiles (.env, .git, .user.ini …) — .well-known stays reachable for ACME
+    location ~ /\.(?!well-known) {
+        deny all;
+        return 404;
+    }
+
+    # Source, data and dependency directories
+    location ~ /(app|storage|vendor|tests|docs|lang)(/|$) {
+        deny all;
+        return 404;
+    }
+
+    # Plugin manifests and PHP sources stay private
+    # (a plugin's client/ assets are served through the CMS, not from disk)
+    location ~ ^/cms/plugins/.+\.(json|php)$ {
+        deny all;
+        return 404;
+    }
+
+    # Dependency manifests, test config and documentation
+    location ~* /(composer\.(json|lock)|phpunit\.xml.*)$ {
+        deny all;
+        return 404;
+    }
+    location ~* \.md$ {
+        deny all;
+        return 404;
+    }
+
+    # ---- CMS front controller --------------------------------------------
+    # Everything under /cms/ that is not a real file goes to index.php.
+    location /cms/ {
+        client_max_body_size 20m;
+        try_files $uri /cms/index.php?$query_string;
+    }
+
+    location = /cms/index.php {
+        include fastcgi_params;
+        fastcgi_pass unix:/run/php/php-fpm.sock;   # ← your PHP-FPM socket
+        fastcgi_param SCRIPT_FILENAME $document_root/cms/index.php;
+        fastcgi_param SCRIPT_NAME /cms/index.php;
+        fastcgi_read_timeout 60s;
+        client_max_body_size 20m;
+    }
+
+    # No other PHP file is executable — the CMS has exactly one entry point.
+    location ~ \.php$ {
+        deny all;
+        return 404;
+    }
+
+    # ---- your static site -------------------------------------------------
+    # Clean URLs for the pages EditFront edits (/about → /about.html).
+    location / {
+        try_files $uri $uri.html $uri/ =404;
+    }
+}

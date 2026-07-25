@@ -90,7 +90,10 @@ Full install & usage guide: **[USAGE.md](USAGE.md)**.
 
 - PHP **8.2+** with `dom`, `mbstring`, `json`, `fileinfo` (`gd` recommended for
   WebP image conversion)
-- Apache with `mod_rewrite` (bundled `.htaccess`) — or nginx with a
+- Apache with `mod_rewrite` (bundled `.htaccess`) — or nginx, in which case you
+  MUST apply [`nginx.conf.example`](nginx.conf.example): nginx ignores
+  `.htaccess`, and without those rules `storage/` (your password hash) is
+  public. The install wizard checks this and refuses to continue if it is. Or a
   front-controller rule
 - A writable install folder during setup (to create `.env` and `storage/`)
 

@@ -369,5 +369,6 @@
   "reviews.submit_rate": "Too many submissions. Please try again later.",
   "dashboard.reviews_link": "Reviews",
   "reviews.unpublished_ok": "Review sent back to moderation.",
-  "reviews.show_more": "Show more"
+  "reviews.show_more": "Show more",
+  "install.storage_exposed": "Your storage/ folder is served over HTTP — anyone can download your password hash. Deny web access to it before continuing: on Apache keep the bundled .htaccess, on nginx apply nginx.conf.example."
 }

@@ -35,7 +35,10 @@ their own site are lower severity unless they cross a trust boundary.
 
 - Keep `APP_DEBUG=false` in production (the installer sets this).
 - Serve over HTTPS. The bundled headers include HSTS.
-- Keep the bundled `.htaccess` (or the equivalent nginx rule) in place — it
+- On nginx, apply `nginx.conf.example` — `.htaccess` is an Apache-only file and
+  nginx silently ignores it, leaving `storage/` and `.env` public.
+- Alternatively point `STORAGE_DIR` at a directory outside the document root.
+- Keep the bundled `.htaccess` (Apache) in place — it
   denies web access to `.env`, `storage/`, `app/`, `vendor/`, `tests/` and
   plugin sources.
 - Run the install wizard immediately after upload; it closes itself (410 Gone)

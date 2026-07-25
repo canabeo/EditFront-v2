@@ -7,7 +7,11 @@ install wizard, and start editing.
 ## Requirements
 
 - PHP **8.2+** with `dom`, `mbstring`, `json`, `fileinfo`
-- Apache with `mod_rewrite` (or nginx with a front-controller rule)
+- Apache with `mod_rewrite` — the bundled `.htaccess` protects the CMS
+  internals. **On nginx you must apply `nginx.conf.example`**: nginx ignores
+  `.htaccess`, so without it `storage/admin.json` (your password hash) and
+  `.env` are downloadable by anyone. The install wizard verifies this from your
+  browser and refuses to create the admin while `storage/` is reachable.
 - Write access to the CMS folder during install (to create `.env` and
   `storage/`)
 

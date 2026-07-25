@@ -25,6 +25,7 @@
         {% endfor %}
       </ul>
       {% if not can_proceed %}<p class="login-error">{{ t('install.blocked') }}</p>{% endif %}
+      <p class="login-error" id="ef-storage-exposed" hidden>{{ t('install.storage_exposed') }}</p>
       <div class="ef-modal-actions">
         <button type="button" class="btn btn-primary" data-next="2" {% if not can_proceed %}disabled{% endif %}>{{ t('install.next') }} →</button>
       </div>
@@ -88,6 +89,20 @@
   document.querySelectorAll('[data-back]').forEach(function (b) {
     b.addEventListener('click', function () { show(b.getAttribute('data-back')); });
   });
+
+  // storage/ must not be reachable over HTTP (see SelfCheck::prepareExposureProbe)
+  var PROBE = {{ probe is defined and probe ? probe|json_encode|raw : 'null' }};
+  if (PROBE) {
+    fetch(PROBE.url, { credentials: 'omit', cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.text() : null; })
+      .then(function (body) {
+        if (body === null || body.trim() !== PROBE.token) { return; } // protected
+        var banner = document.getElementById('ef-storage-exposed');
+        if (banner) { banner.hidden = false; }
+        document.querySelectorAll('[data-next="2"]').forEach(function (b) { b.disabled = true; });
+      })
+      .catch(function () { /* blocked by the server or the network — treat as protected */ });
+  }
 
   var go = document.getElementById('ef-install-go');
   var err = document.getElementById('ef-install-err');

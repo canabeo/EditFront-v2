@@ -369,5 +369,6 @@
   "reviews.submit_rate": "Слишком много отзывов подряд. Попробуйте позже.",
   "dashboard.reviews_link": "Отзывы",
   "reviews.unpublished_ok": "Отзыв возвращён на модерацию.",
-  "reviews.show_more": "Показать ещё"
+  "reviews.show_more": "Показать ещё",
+  "install.storage_exposed": "Папка storage/ отдаётся по HTTP — хеш пароля может скачать кто угодно. Закройте к ней доступ до продолжения: на Apache оставьте штатный .htaccess, на nginx примените nginx.conf.example."
 }
