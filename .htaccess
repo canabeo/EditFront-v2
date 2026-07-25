@@ -3,6 +3,11 @@
 # a deny placed after the [L] catch-all never fires).
 Options -Indexes
 
+# Without this the bare /cms/ URL — the first thing anyone opens after
+# unpacking — hits an existing directory, so the front-controller rewrite is
+# skipped, and -Indexes turns the listing refusal into 403 Forbidden.
+DirectoryIndex index.php
+
 <IfModule mod_rewrite.c>
 RewriteEngine On
 
