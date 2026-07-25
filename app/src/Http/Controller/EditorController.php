@@ -9,6 +9,7 @@ use EditFront\Document\DocumentService;
 use EditFront\Document\FontFaceRenderer;
 use EditFront\Document\Html5;
 use EditFront\Font\FontService;
+use EditFront\Document\FontInliner;
 use EditFront\Http\UrlHelper;
 use EditFront\Support\Config;
 use EditFront\I18n\Translator;
@@ -35,6 +36,7 @@ final class EditorController
         private readonly FontFaceRenderer $fontFaces,
         private readonly FontService $fonts,
         private readonly Config $config,
+        private readonly FontInliner $fontInliner,
     ) {
     }
 
@@ -115,6 +117,21 @@ final class EditorController
             // references outright — a CORS header cannot help, external <use> is
             // same-origin only. Inlining makes the reference same-document.
             // This lives in the response only; the file on disk is untouched.
+            // The sandbox gives this document an opaque origin, so the site's
+            // own web fonts and icon fonts are refused unless the server sends
+            // CORS headers for them — which a front-end proxy may make
+            // impossible. Inline them instead; a data: URI has no origin.
+            $fontCss = $this->fontInliner->buildCss($doc, $page);
+            if ($fontCss !== '') {
+                $fontStyle = $doc->createElement('style');
+                $fontStyle->setAttribute('id', 'ef-fonts-inline');
+                $fontStyle->appendChild($doc->createTextNode($fontCss));
+                $head = $doc->getElementsByTagName('head')->item(0);
+                if ($head !== null) {
+                    $head->appendChild($fontStyle);
+                }
+            }
+
             $spritePath = $this->config->cmsDir() . '/assets/icons.svg';
             if (is_file($spritePath)) {
                 $spriteDoc = new \DOMDocument();
