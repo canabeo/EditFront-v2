@@ -6,6 +6,7 @@ namespace EditFront\Seo;
 
 use EditFront\Http\UrlHelper;
 use EditFront\Storage\PagesIndex;
+use EditFront\Support\Config;
 
 /**
  * On-the-fly sitemap.xml (§9 C5, optional). Walks the pages index and emits a
@@ -20,17 +21,74 @@ final class SitemapBuilder
 {
     private const MAX_URLS = 50000;
 
+    /** how long a generated sitemap may be reused (matches the Cache-Control) */
+    private const CACHE_TTL = 3600;
+
     public function __construct(
         private readonly PagesIndex $pages,
         private readonly UrlHelper $url,
         private readonly SeoService $seo,
+        private readonly Config $config,
     ) {
     }
 
-    /** @param string $baseUrl scheme://host (no trailing slash) */
+    /**
+     * Build the sitemap, reusing a cached copy when nothing relevant changed.
+     *
+     * Without this every anonymous GET walked and parsed the entire site (up to
+     * PagesIndex::MAX_PAGES files), holding a PHP-FPM worker for the duration —
+     * and a query string was enough to slip past any shared HTTP cache.
+     *
+     * @param string $baseUrl scheme://host (no trailing slash)
+     */
     public function build(string $baseUrl): string
     {
         $baseUrl = rtrim($baseUrl, '/');
+
+        $cacheFile = $this->cacheFile($baseUrl);
+        $rootMtime = (int) @filemtime($this->config->siteRoot());
+        $cached = is_file($cacheFile)
+            ? json_decode((string) @file_get_contents($cacheFile), true)
+            : null;
+        if (
+            is_array($cached)
+            && is_string($cached['xml'] ?? null)
+            && (int) ($cached['root_mtime'] ?? -1) === $rootMtime
+            && time() - (int) ($cached['built_at'] ?? 0) < self::CACHE_TTL
+        ) {
+            return $cached['xml'];
+        }
+
+        $xml = $this->render($baseUrl);
+        $this->writeCache($cacheFile, $xml, $rootMtime);
+        return $xml;
+    }
+
+    private function cacheFile(string $baseUrl): string
+    {
+        return $this->config->storageDir() . '/cache/sitemap-' . sha1($baseUrl) . '.json';
+    }
+
+    private function writeCache(string $file, string $xml, int $rootMtime): void
+    {
+        $dir = dirname($file);
+        if (!is_dir($dir) && !@mkdir($dir, 0770, true) && !is_dir($dir)) {
+            return; // caching is best-effort; a failure must not break the sitemap
+        }
+        $payload = json_encode(['built_at' => time(), 'root_mtime' => $rootMtime, 'xml' => $xml]);
+        if ($payload === false) {
+            return;
+        }
+        $tmp = $file . '.tmp.' . bin2hex(random_bytes(4));
+        if (@file_put_contents($tmp, $payload) !== false && @rename($tmp, $file)) {
+            @chmod($file, 0640);
+            return;
+        }
+        @unlink($tmp);
+    }
+
+    private function render(string $baseUrl): string
+    {
         $out = '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
             . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
 

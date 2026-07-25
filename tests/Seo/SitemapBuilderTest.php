@@ -21,7 +21,7 @@ final class SitemapBuilderTest extends TestCase
             'storage_dir' => ef2_temp_dir('sm-storage'),
         ]);
         @mkdir($config->cmsDir(), 0777, true);
-        return new SitemapBuilder(new PagesIndex($config), new UrlHelper($config), ef2_seo_service($config));
+        return new SitemapBuilder(new PagesIndex($config), new UrlHelper($config), ef2_seo_service($config), $config);
     }
 
     public function test_emits_valid_urlset_with_pages(): void
@@ -83,9 +83,40 @@ final class SitemapBuilderTest extends TestCase
             'storage_dir' => ef2_temp_dir('sm-storage'),
         ]);
         @mkdir($config->cmsDir(), 0777, true);
-        $builder = new SitemapBuilder(new PagesIndex($config), new UrlHelper($config), ef2_seo_service($config));
+        $builder = new SitemapBuilder(new PagesIndex($config), new UrlHelper($config), ef2_seo_service($config), $config);
         $xml = $builder->build('https://example.test');
         $this->assertStringContainsString('/keep.html</loc>', $xml);
         $this->assertStringNotContainsString('/hidden.html</loc>', $xml);
+    }
+
+    /**
+     * Bug 3 (MEDIUM, CWE-770): sitemap.xml is anonymous and used to walk AND
+     * HTML-parse every page in the site on every single request, holding a
+     * PHP-FPM worker for the whole scan — and `?x=1` was enough to miss any
+     * shared HTTP cache and reach the origin again. The result is now cached on
+     * disk, so repeated requests cost a single file read.
+     */
+    public function test_sitemap_is_served_from_cache_on_the_second_call(): void
+    {
+        $site = ef2_temp_dir('sm-cache-site');
+        file_put_contents($site . '/a.html', '<html><body>a</body></html>');
+        $config = ef2_test_config([
+            'base_path' => '/cms',
+            'site_root' => $site,
+            'cms_dir' => $site . '/cms',
+            'storage_dir' => ef2_temp_dir('sm-cache-storage'),
+        ]);
+        @mkdir($config->cmsDir(), 0777, true);
+        $builder = new SitemapBuilder(new PagesIndex($config), new UrlHelper($config), ef2_seo_service($config), $config);
+
+        $first = $builder->build('https://example.com');
+        $this->assertStringContainsString('a.html', $first);
+
+        // Change page CONTENT so it would now be excluded on a real rebuild.
+        // The site-root mtime is untouched, so the cache stays valid and the
+        // second call must return the very same bytes without rescanning.
+        file_put_contents($site . '/a.html', '<html><head><meta name="robots" content="noindex"></head><body>a</body></html>');
+
+        $this->assertSame($first, $builder->build('https://example.com'));
     }
 }

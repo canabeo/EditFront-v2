@@ -69,6 +69,14 @@ final class SeoService
     public function isIndexable(string $page): bool
     {
         try {
+            // Fast path: this used to full-parse every page, which made
+            // sitemap.xml cost O(size of the whole site) per anonymous request.
+            // A robots directive cannot exist in a file that never mentions
+            // "robots", so such a page is indexable without parsing anything.
+            $raw = $this->storage->read($page);
+            if (stripos($raw, 'robots') === false) {
+                return true;
+            }
             return $this->read($page)['index'];
         } catch (\Throwable) {
             return true; // never let a bad page drop out of the sitemap by accident
