@@ -10,6 +10,7 @@ use EditFront\Document\FontFaceRenderer;
 use EditFront\Document\Html5;
 use EditFront\Font\FontService;
 use EditFront\Http\UrlHelper;
+use EditFront\Support\Config;
 use EditFront\I18n\Translator;
 use EditFront\Plugin\OrphanResolver;
 use EditFront\Plugin\PluginManager;
@@ -33,6 +34,7 @@ final class EditorController
         private readonly Csrf $csrf,
         private readonly FontFaceRenderer $fontFaces,
         private readonly FontService $fonts,
+        private readonly Config $config,
     ) {
     }
 
@@ -107,6 +109,25 @@ final class EditorController
                 'presetFonts' => $this->fonts->presetFamilies(),
             ], JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) . ';';
             $body->appendChild($boot);
+
+            // Inline the icon sprite. The preview is sandboxed, so its origin is
+            // opaque and Chrome blocks external <use href="…icons.svg#id">
+            // references outright — a CORS header cannot help, external <use> is
+            // same-origin only. Inlining makes the reference same-document.
+            // This lives in the response only; the file on disk is untouched.
+            $spritePath = $this->config->cmsDir() . '/assets/icons.svg';
+            if (is_file($spritePath)) {
+                $spriteDoc = new \DOMDocument();
+                if (@$spriteDoc->load($spritePath) && $spriteDoc->documentElement !== null) {
+                    $sprite = $doc->importNode($spriteDoc->documentElement, true);
+                    if ($sprite instanceof \DOMElement) {
+                        $sprite->setAttribute('id', 'cms-icon-sprite');
+                        $sprite->setAttribute('style', 'display:none');
+                        $sprite->setAttribute('aria-hidden', 'true');
+                        $body->insertBefore($sprite, $body->firstChild);
+                    }
+                }
+            }
 
             $script = $doc->createElement('script');
             $script->setAttribute('src', $this->url->asset('preview-inject.js'));

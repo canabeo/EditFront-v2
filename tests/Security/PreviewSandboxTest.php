@@ -95,4 +95,25 @@ final class PreviewSandboxTest extends TestCase
 
         $this->assertStringContainsString("handleProxy(d)", $shell);
     }
+
+
+    /**
+     * Found by clicking through the sandboxed editor: the action panel rendered
+     * as an empty bar. Its buttons were there, but their icons come from an
+     * external SVG sprite via <use href="…/icons.svg#id">, and Chrome refuses
+     * external <use> from a document with an opaque origin ("Unsafe attempt to
+     * load URL …"). Unlike fonts, no CORS header lifts that — external <use> is
+     * same-origin only — so the sprite must be inlined into the preview and
+     * referenced same-document.
+     */
+    public function test_the_icon_sprite_is_inlined_into_the_preview(): void
+    {
+        $controller = $this->read('app/src/Http/Controller/EditorController.php');
+        $this->assertStringContainsString('icons.svg', $controller);
+        $this->assertStringContainsString("setAttribute('id', 'cms-icon-sprite')", $controller);
+
+        $js = $this->read('assets/preview-inject.js');
+        // the reference must drop the file part when the sprite is in the document
+        $this->assertStringContainsString("document.getElementById('cms-icon-sprite') ? '' : ICONS_URL", $js);
+    }
 }

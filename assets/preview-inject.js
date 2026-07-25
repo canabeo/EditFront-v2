@@ -33,8 +33,11 @@
         svg.setAttribute('class', 'cms-ico');
         svg.setAttribute('aria-hidden', 'true');
         var use = document.createElementNS(SVG_NS, 'use');
-        use.setAttribute('href', ICONS_URL + '#' + name);
-        use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', ICONS_URL + '#' + name);
+        // Same-document when the sprite was inlined (it always is under the
+        // sandbox); fall back to the external file if it ever is not.
+        var ref = (document.getElementById('cms-icon-sprite') ? '' : ICONS_URL) + '#' + name;
+        use.setAttribute('href', ref);
+        use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', ref);
         svg.appendChild(use);
         return svg;
     }
