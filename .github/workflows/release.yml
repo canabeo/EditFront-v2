@@ -26,7 +26,7 @@ jobs:
       - name: Assemble drop-in
         run: |
           mkdir -p dist/cms
-          cp -r app assets lang plugins vendor docs index.php .htaccess .user.ini .env.example README.md USAGE.md SECURITY.md CHANGELOG.md LICENSE dist/cms/
+          cp -r app assets lang plugins vendor docs index.php .htaccess .user.ini .env.example nginx.conf.example README.md USAGE.md SECURITY.md CHANGELOG.md LICENSE dist/cms/
           mkdir -p dist/cms/storage
           : > dist/cms/storage/.gitkeep
           rm -f dist/cms/lang/user/*.json || true
