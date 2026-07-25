@@ -9,7 +9,11 @@
     'use strict';
 
     var CFG = window.__cmsPreview || {};
-    var ORIGIN = window.location.origin;
+    // This document is sandboxed, so its own origin is opaque ("null") and
+    // useless for messaging. Start unrestricted and pin the shell's real origin
+    // from the first message it sends; inbound messages are authenticated by
+    // SOURCE (must be our parent frame), which no origin string can forge.
+    var ORIGIN = '*';
     var ID_ATTR = 'data-cms-id';
 
     // i18n (§8.3): full active-language dict injected by EditorController into __cmsPreview
@@ -552,14 +556,7 @@
             setStatus(t('image.uploading'), '');
             var fd = new FormData();
             fd.append('file', file);
-            fetch(CFG.uploadUrl, {
-                method: 'POST',
-                headers: { 'X-CSRF-Token': CFG.csrf || '' },
-                credentials: 'same-origin',
-                body: fd
-            }).then(function (r) {
-                return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, data: d }; });
-            }).then(function (res) {
+            proxy('upload', { file: file }).then(function (res) {
                 if (res.status === 200 && res.data.ok) {
                     pick(res.data.url);
                 } else {
@@ -585,8 +582,7 @@
         var grid = document.createElement('div');
         grid.className = 'cms-imgpick-grid';
         host.appendChild(grid);
-        fetch(CFG.imagesUrl, { credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
+        proxy('images')
             .then(function (d) {
                 setStatus('');
                 var images = (d && d.images) || [];
@@ -2057,12 +2053,46 @@
         });
     }
 
+    /* ---------------------------- api proxy ------------------------------ */
+
+    /**
+     * The sandbox costs this document its same-origin privileges, so it can no
+     * longer call the CMS API itself: its requests would be cross-origin and
+     * cookie-less. The shell still can, so it performs them on our behalf and
+     * posts the result back. A File survives postMessage via structured clone,
+     * so uploads work unchanged from the user's point of view.
+     */
+    var proxySeq = 0;
+    var proxyPending = {};
+
+    function proxy(kind, payload) {
+        return new Promise(function (resolve, reject) {
+            var id = ++proxySeq;
+            proxyPending[id] = { resolve: resolve, reject: reject };
+            parent.postMessage({ type: 'cms:proxy', id: id, kind: kind, payload: payload || null }, ORIGIN);
+        });
+    }
+
+    function settleProxy(d) {
+        var pending = proxyPending[d.id];
+        if (!pending) return;
+        delete proxyPending[d.id];
+        if (d.ok) pending.resolve(d.data);
+        else pending.reject(new Error(d.error || 'proxy failed'));
+    }
+
     /* --------------------------- messages ------------------------------- */
 
     window.addEventListener('message', function (e) {
-        if (e.origin !== ORIGIN || !e.data || typeof e.data.type !== 'string') return;
+        if (e.source !== window.parent || !e.data || typeof e.data.type !== 'string') return;
+        if (ORIGIN === '*' && typeof e.origin === 'string' && e.origin !== 'null' && e.origin !== '') {
+            ORIGIN = e.origin; // pin once: replies now target the shell explicitly
+        }
         var d = e.data;
         switch (d.type) {
+            case 'cms:proxy-result':
+                settleProxy(d);
+                break;
             case 'cms:shell-ready':
                 parent.postMessage({
                     type: 'cms:doc-ready',
@@ -2132,8 +2162,7 @@
     }
 
     function init() {
-        fetch(CFG.typesUrl, { credentials: 'same-origin' })
-            .then(function (r) { return r.json(); })
+        proxy('types')
             .then(function (json) {
                 TYPES = json;
                 buildKindIndex();

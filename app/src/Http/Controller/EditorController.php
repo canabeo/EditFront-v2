@@ -93,9 +93,10 @@ final class EditorController
                 'iconsUrl' => $this->url->asset('icons.svg'),
                 'plugins' => $plugins,
                 'elements' => $elements,
-                // image picker (§4.9): same-origin endpoints + CSRF token so the
-                // in-preview picker can upload/list without a round-trip to the shell
-                'csrf' => $this->csrf->token(),
+                // The CSRF token deliberately does NOT travel into the preview:
+                // that document is sandboxed and holds the user's own page, so it
+                // is the last place a credential should live. Uploads and listings
+                // go through the shell (cms:proxy), which holds the token.
                 'uploadUrl' => $this->url->path('api/upload'),
                 'imagesUrl' => $this->url->path('api/images'),
                 // full active-language dict so preview-inject t() needs no extra fetch (§8.3)

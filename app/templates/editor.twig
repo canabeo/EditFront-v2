@@ -75,7 +75,17 @@
     </div>
   </div>
   <div class="ef-preview-wrap">
-    <iframe id="ef-preview" src="{{ url('preview') }}?page={{ page|url_encode }}" title="{{ t('editor.preview_title') }}"></iframe>
+    {#
+      sandbox WITHOUT allow-same-origin: the previewed page is the user's own
+      and may legitimately load third-party scripts. Same-origin they would run
+      inside the admin, read data-cms-csrf off the shell and call the API as the
+      logged-in admin. Opaque origin stops that. allow-modals is needed because
+      the editor runtime uses confirm() for destructive actions; the preview no
+      longer calls the API itself (the shell proxies for it), so it needs
+      neither allow-same-origin nor allow-forms.
+    #}
+    <iframe id="ef-preview" sandbox="allow-scripts allow-modals"
+            src="{{ url('preview') }}?page={{ page|url_encode }}" title="{{ t('editor.preview_title') }}"></iframe>
   </div>
 </div>
 <script>
@@ -89,6 +99,9 @@ window.__cmsEditor = {
   backupsUrl: {{ url('api/backups')|json_encode|raw }},
   restoreUrl: {{ url('api/restore')|json_encode|raw }},
   seoUrl: {{ url('api/seo')|json_encode|raw }},
+  uploadUrl: {{ url('api/upload')|json_encode|raw }},
+  imagesUrl: {{ url('api/images')|json_encode|raw }},
+  typesUrl: {{ asset('element-types.json')|json_encode|raw }},
   liveUrl: {{ ('/' ~ page)|json_encode|raw }}
 };
 </script>

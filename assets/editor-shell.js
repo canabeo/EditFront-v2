@@ -298,14 +298,61 @@
     }
 
     function reloadPreview() {
-        iframe.contentWindow.location.reload();
+        // contentWindow.location.reload() is cross-origin now that the preview
+        // is sandboxed; re-pointing src is the supported way to reload it.
+        var src = iframe.getAttribute('src');
+        iframe.setAttribute('src', 'about:blank');
+        iframe.setAttribute('src', src);
         chipEl.hidden = true;
     }
 
     /* --- plumbing --------------------------------------------------------- */
 
     function post(msg) {
-        if (iframe.contentWindow) iframe.contentWindow.postMessage(msg, ORIGIN);
+        // The sandboxed preview has an opaque origin, so it cannot be named as a
+        // targetOrigin. '*' is safe here because the receiver is not chosen by
+        // origin at all: we post into a specific frame we created ourselves.
+        if (iframe.contentWindow) iframe.contentWindow.postMessage(msg, '*');
+    }
+
+    /**
+     * Run an API call the sandboxed preview can no longer make for itself and
+     * hand the result back. The CSRF token and the session stay here, in the
+     * shell — the preview never sees either.
+     */
+    function handleProxy(d) {
+        var reply = function (ok, data, error) {
+            post({ type: 'cms:proxy-result', id: d.id, ok: ok, data: data, error: error });
+        };
+        var fail = function (err) { reply(false, null, String((err && err.message) || err)); };
+
+        if (d.kind === 'types') {
+            fetch(CFG.typesUrl, { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (j) { reply(true, j); })
+                .catch(fail);
+        } else if (d.kind === 'images') {
+            fetch(CFG.imagesUrl, { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (j) { reply(true, j); })
+                .catch(fail);
+        } else if (d.kind === 'upload') {
+            var file = d.payload && d.payload.file;
+            if (!file) { fail(new Error('no file')); return; }
+            var fd = new FormData();
+            fd.append('file', file);
+            fetch(CFG.uploadUrl, {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': CSRF },
+                credentials: 'same-origin',
+                body: fd
+            }).then(function (r) {
+                return r.json().catch(function () { return {}; })
+                    .then(function (j) { reply(true, { status: r.status, data: j }); });
+            }).catch(fail);
+        } else {
+            fail(new Error('unknown proxy kind'));
+        }
     }
 
     function postJson(url, body) {
@@ -348,10 +395,15 @@
     }, 500);
 
     window.addEventListener('message', function (e) {
-        if (e.origin !== ORIGIN || !e.data || typeof e.data.type !== 'string') return;
+        // The preview's origin is opaque under the sandbox, so authenticate by
+        // SOURCE instead: only the frame we created can be e.source.
+        if (e.source !== iframe.contentWindow || !e.data || typeof e.data.type !== 'string') return;
         var d = e.data;
 
         switch (d.type) {
+            case 'cms:proxy':
+                handleProxy(d);
+                break;
             case 'cms:doc-ready':
                 handshakeDone = true;
                 setStatus(t('editor.status_ready', { n: (d.count || 0) }), 'ok');
