@@ -12,7 +12,7 @@ use EditFront\Support\Config;
  * The preview runs with an opaque origin, and fonts are always fetched under
  * CORS rules, so the browser refuses every @font-face file unless the server
  * sends Access-Control-Allow-Origin. On a host that serves static files from a
- * front-end proxy — sprinthost does — no .htaccess can add that header, and the
+ * front-end proxy — some shared hosts do — no .htaccess can add that header, and the
  * admin ends up editing a page with fallback type and blank icon glyphs.
  *
  * Rather than depend on server configuration we cannot reach, the preview

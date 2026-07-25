@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
  * The editor preview is sandboxed, so it has an opaque origin, and fonts are
  * always fetched under CORS rules — every @font-face file is refused unless the
  * server sends Access-Control-Allow-Origin for it. On a host whose front-end
- * proxy serves static files (sprinthost does), no .htaccess can add that
+ * proxy serves static files (as some shared hosts do), no .htaccess can add that
  * header, and the administrator edits the page in fallback type with blank icon
  * glyphs. Inlining the bytes as data: URIs sidesteps origins entirely.
  */

@@ -339,7 +339,7 @@ final class NewsStore
                 throw new NewsException("config.$key must be a string");
             }
             // title_suffix is concatenated raw onto <title> (spec §1.1, contract §3:
-            // example ' — Новости ТриАтур'), so its leading/trailing space is
+            // example ' — Новости компании'), so its leading/trailing space is
             // load-bearing and must be preserved. Structural fields are trimmed.
             $out[$key] = $key === 'title_suffix' ? $value : trim($value);
         }

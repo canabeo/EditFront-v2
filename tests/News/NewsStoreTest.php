@@ -176,12 +176,12 @@ final class NewsStoreTest extends TestCase
     {
         $store  = $this->store();
         $stored = $store->saveConfig([
-            'title_suffix' => ' — Новости ТриАтур',
+            'title_suffix' => ' — Новости компании',
             'base_url'     => 'https://example.com',
         ]);
 
         $this->assertSame('_news-template.html', $stored['template_page']); // default kept
-        $this->assertSame(' — Новости ТриАтур', $stored['title_suffix']);
+        $this->assertSame(' — Новости компании', $stored['title_suffix']);
         $this->assertSame('https://example.com', $stored['base_url']);
         $this->assertSame('ru', $stored['date_locale']);
 

@@ -44,7 +44,7 @@ final class NewsRendererTest extends TestCase
         $store = new NewsStore($config);
         $store->saveConfig([
             'template_page' => '_news-template.html',
-            'title_suffix' => ' — Новости ТриАтур',
+            'title_suffix' => ' — Новости компании',
             'base_url' => 'https://example.com',
             'date_locale' => 'ru',
         ]);
@@ -60,7 +60,7 @@ final class NewsRendererTest extends TestCase
         return [
             'id' => 'n-0a1b2c3d',
             'slug' => 'den-rossii-2026',
-            'title' => 'График работы офисов ТриАтур в День России',
+            'title' => 'График работы офисов в праздничный день',
             'title_short' => 'График работы в День России',
             'category' => 'Компания',
             'date' => '2026-06-11',
@@ -144,10 +144,10 @@ HTML;
   "inLanguage": "ru-RU",
   "publisher": {
     "@type": "Organization",
-    "name": "ТриАтур",
+    "name": "Пример",
     "logo": { "@type": "ImageObject", "url": "https://example.com/logo.png" }
   },
-  "author": { "@type": "Organization", "name": "Редакция ТриАтур" }
+  "author": { "@type": "Organization", "name": "Редакция" }
 }</script>
 </head>
 <body>
@@ -190,11 +190,11 @@ HTML;
         self::assertSame('ru-RU', $decoded['inLanguage']);
         self::assertSame([
             '@type' => 'Organization',
-            'name' => 'ТриАтур',
+            'name' => 'Пример',
             'logo' => ['@type' => 'ImageObject', 'url' => 'https://example.com/logo.png'],
         ], $decoded['publisher']);
         self::assertSame(
-            ['@type' => 'Organization', 'name' => 'Редакция ТриАтур'],
+            ['@type' => 'Organization', 'name' => 'Редакция'],
             $decoded['author'],
         );
 
@@ -202,7 +202,7 @@ HTML;
         //     1970/placeholder values the template carried)
         self::assertSame('NewsArticle', $decoded['@type']);
         self::assertSame('https://schema.org', $decoded['@context']);
-        self::assertSame('График работы офисов ТриАтур в День России', $decoded['headline']);
+        self::assertSame('График работы офисов в праздничный день', $decoded['headline']);
         self::assertSame('График работы офисов в праздничные дни.', $decoded['description']);
         self::assertSame('Компания', $decoded['articleSection']);
         self::assertSame('2026-06-11T08:00:00Z', $decoded['datePublished']);
@@ -236,7 +236,7 @@ HTML;
 
         self::assertSame('https://schema.org', $decoded['@context']);
         self::assertSame('NewsArticle', $decoded['@type']);
-        self::assertSame('График работы офисов ТриАтур в День России', $decoded['headline']);
+        self::assertSame('График работы офисов в праздничный день', $decoded['headline']);
         self::assertSame('2026-06-11T08:00:00Z', $decoded['datePublished']);
         self::assertSame('https://example.com/den-rossii-2026', $decoded['url']);
         self::assertSame(['https://example.com/assets/img/og-news-den-rossii.jpg'], $decoded['image']);
@@ -307,7 +307,7 @@ HTML;
         self::assertStringContainsString('</html>', $html);
         self::assertStringNotContainsString('name="robots"', $html, 'no robots meta may be injected when the template lacks the slot');
         // and the article body still filled normally
-        self::assertStringContainsString('>График работы офисов ТриАтур в День России<', $html);
+        self::assertStringContainsString('>График работы офисов в праздничный день<', $html);
     }
 
     public function test_jsonld_merge_carries_publisher_and_author_from_template(): void
@@ -319,7 +319,7 @@ HTML;
 
         self::assertArrayHasKey('publisher', $decoded);
         self::assertSame('Organization', $decoded['publisher']['@type']);
-        self::assertSame('ТриАтур', $decoded['publisher']['name']);
+        self::assertSame('Пример', $decoded['publisher']['name']);
         self::assertSame(
             ['@type' => 'ImageObject', 'url' => 'https://example.com/logo.png'],
             $decoded['publisher']['logo'],
@@ -333,7 +333,7 @@ HTML;
         $html = $this->renderer()->renderArticle($this->sampleItem());
 
         // head
-        self::assertStringContainsString('<title>График работы офисов ТриАтур в День России — Новости ТриАтур</title>', $html);
+        self::assertStringContainsString('<title>График работы офисов в праздничный день — Новости компании</title>', $html);
         self::assertStringContainsString('content="График работы офисов в праздничные дни."', $html);
         self::assertStringContainsString('href="https://example.com/den-rossii-2026"', $html);
         self::assertStringContainsString('content="https://example.com/den-rossii-2026"', $html);
@@ -341,7 +341,7 @@ HTML;
 
         // body
         self::assertStringContainsString('Компания · 11 июня 2026', $html);            // article meta order
-        self::assertStringContainsString('>График работы офисов ТриАтур в День России<', $html); // h1
+        self::assertStringContainsString('>График работы офисов в праздничный день<', $html); // h1
         self::assertStringContainsString('src="assets/img/news-den-rossii.jpg"', $html);
         // body innerHTML: the lead <p class="lead"> survives importFragment (no xmlns
         // churn); ensureAnnotated stamps a data-cms-id on it, so match the open tag
@@ -374,7 +374,7 @@ HTML;
     {
         $html = $this->renderer()->renderArticle($this->sampleItem());
         self::assertMatchesRegularExpression(
-            '~<img[^>]*src="assets/img/news-den-rossii\.jpg"[^>]*alt="График работы офисов ТриАтур в День России"~',
+            '~<img[^>]*src="assets/img/news-den-rossii\.jpg"[^>]*alt="График работы офисов в праздничный день"~',
             $html,
         );
     }
@@ -503,7 +503,7 @@ HTML;
         self::assertStringNotContainsString('src=""', $html, 'no empty src="" may be emitted');
 
         // the article still renders its body + title normally
-        self::assertStringContainsString('>График работы офисов ТриАтур в День России<', $html); // h1
+        self::assertStringContainsString('>График работы офисов в праздничный день<', $html); // h1
         self::assertMatchesRegularExpression('~<h2[^>]*>Подзаголовок</h2>~', $html);             // body
     }
 
@@ -536,7 +536,7 @@ HTML;
 
         self::assertSame('https://schema.org', $decoded['@context']);
         self::assertSame('NewsArticle', $decoded['@type']);
-        self::assertSame('График работы офисов ТриАтур в День России', $decoded['headline']);
+        self::assertSame('График работы офисов в праздничный день', $decoded['headline']);
         self::assertSame('График работы офисов в праздничные дни.', $decoded['description']);
         self::assertSame('Компания', $decoded['articleSection']);
         self::assertSame('2026-06-11T08:00:00Z', $decoded['datePublished']);
