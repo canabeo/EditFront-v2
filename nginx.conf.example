@@ -81,6 +81,16 @@ server {
         return 404;
     }
 
+    # ---- fonts need CORS for the editor -----------------------------------
+    # The editor preview is sandboxed, so it has an OPAQUE origin, and fonts are
+    # always fetched in CORS mode. Without this header the site's web fonts and
+    # icon fonts silently fail to load inside the editor and the admin ends up
+    # editing in fallback typography. Fonts are public assets; "*" is safe.
+    location ~* \.(woff2?|ttf|otf|eot)$ {
+        add_header Access-Control-Allow-Origin "*" always;
+        try_files $uri =404;
+    }
+
     # ---- your static site -------------------------------------------------
     # Clean URLs for the pages EditFront edits (/about → /about.html).
     location / {

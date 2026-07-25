@@ -68,6 +68,27 @@ If you would rather keep your original formatting as close as possible, enable
 `.env`): EditFront then only adds the ids it needs to address elements, without
 reformatting the rest of the HTML.
 
+## Fonts in the editor
+
+The editor renders your page in a sandboxed frame, which browsers treat as a
+separate origin. Fonts are always fetched under CORS rules, so your web fonts
+and icon fonts need one header to show up inside the editor — without it the
+page still edits correctly, it just renders in fallback typography.
+
+The bundled `nginx.conf.example` already contains the rule. On Apache, add this
+to the `.htaccess` in your **site root** (not the CMS folder):
+
+```apache
+<IfModule mod_headers.c>
+  <FilesMatch "\.(woff2?|ttf|otf|eot)$">
+    Header set Access-Control-Allow-Origin "*"
+  </FilesMatch>
+</IfModule>
+```
+
+Fonts are public files, so allowing any origin to read them changes nothing
+about who can see them.
+
 ## Plugins
 
 Custom block types live in `plugins/<slug>/`. Drop a plugin folder in, and its
