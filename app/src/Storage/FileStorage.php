@@ -10,19 +10,59 @@ use EditFront\Support\Config;
  * File access inside the site root. Writes are atomic only:
  * flock + tmp + fsync + rename + post-rename short-write check (invariant 0.2.3).
  * Any failure cleans up the tmp file and throws.
+ *
+ * The site root CONTAINS the CMS folder, so "cms/storage/admin.json" is a
+ * perfectly legal relative path needing no traversal — PathGuard cannot help,
+ * because the problem is not an escape but an allowed area that is too wide.
+ * Every access therefore goes through resolve(), which additionally refuses any
+ * path landing inside cmsDir(). That is the chokepoint: page CRUD, uploads and
+ * every future caller inherit it instead of each re-deriving the rule.
  */
 final class FileStorage
 {
+    /** realpath of the CMS folder, resolved once (false = unresolvable) */
+    private string|false|null $cmsReal = null;
+
     public function __construct(
         private readonly Config $config,
         private readonly PathGuard $guard,
     ) {
     }
 
+    /**
+     * Resolve a site-relative path, refusing anything inside the CMS folder.
+     *
+     * The CMS is not editable content: its sources, storage/ (password hash),
+     * .env and vendor/ must be unreachable through the page/file APIs even
+     * though they physically live under the site root.
+     */
+    private function resolve(string $rel, bool $mustExist): string
+    {
+        $abs = $this->guard->resolveWithin($this->config->siteRoot(), $rel, $mustExist);
+
+        if ($this->cmsReal === null) {
+            $this->cmsReal = realpath($this->config->cmsDir());
+        }
+        $cms = $this->cmsReal;
+        if ($cms === false) {
+            return $abs;
+        }
+        // A degenerate install with the CMS AT the site root would otherwise
+        // block everything; there is no separate site to protect in that case.
+        $siteReal = realpath($this->config->siteRoot());
+        if ($siteReal !== false && rtrim($cms, '/') === rtrim($siteReal, '/')) {
+            return $abs;
+        }
+        if ($abs === $cms || str_starts_with($abs, rtrim($cms, '/') . '/')) {
+            throw new InvalidPathException('path is inside the CMS folder: ' . $rel);
+        }
+        return $abs;
+    }
+
     public function exists(string $rel): bool
     {
         try {
-            $abs = $this->guard->resolveWithin($this->config->siteRoot(), $rel, true);
+            $abs = $this->resolve($rel, true);
         } catch (StorageException) {
             return false;
         }
@@ -31,7 +71,7 @@ final class FileStorage
 
     public function read(string $rel): string
     {
-        $abs = $this->guard->resolveWithin($this->config->siteRoot(), $rel, true);
+        $abs = $this->resolve($rel, true);
         if (!is_file($abs)) {
             throw new StorageException('not a file: ' . $rel);
         }
@@ -44,7 +84,7 @@ final class FileStorage
 
     public function atomicWrite(string $rel, string $content): void
     {
-        $abs = $this->guard->resolveWithin($this->config->siteRoot(), $rel, false);
+        $abs = $this->resolve($rel, false);
         $this->writeAtomicTo($abs, $rel, $content);
     }
 
@@ -55,7 +95,7 @@ final class FileStorage
      */
     public function createNew(string $rel, string $content): void
     {
-        $abs = $this->guard->resolveWithin($this->config->siteRoot(), $rel, false);
+        $abs = $this->resolve($rel, false);
         clearstatcache(true, $abs);
         if (file_exists($abs)) {
             throw new PageExistsException('page already exists: ' . $rel);
@@ -115,7 +155,7 @@ final class FileStorage
     /** Delete a file inside the site root (Pages CRUD delete; caller backs up first). */
     public function delete(string $rel): void
     {
-        $abs = $this->guard->resolveWithin($this->config->siteRoot(), $rel, true);
+        $abs = $this->resolve($rel, true);
         if (!is_file($abs)) {
             throw new StorageException('not a file: ' . $rel);
         }

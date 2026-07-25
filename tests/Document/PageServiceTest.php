@@ -235,4 +235,26 @@ final class PageServiceTest extends TestCase
         $this->assertNotSame('', $res['backup_id']);
         $this->assertFileDoesNotExist($this->site . '/blog/post.html');
     }
+
+    /**
+     * Bug 6 (MEDIUM): create() validated the TARGET but not the SOURCE, so
+     * cloning "cms/storage/admin.json" into a page published the password hash
+     * as a public HTML file — on any web server, including a correctly locked
+     * down Apache, because the destination is a legitimate public page. Closed
+     * by the FileStorage rule that the CMS folder is not readable content.
+     */
+    public function test_create_cannot_clone_a_file_from_inside_the_cms(): void
+    {
+        @mkdir($this->config->cmsDir() . '/storage', 0777, true);
+        file_put_contents($this->config->cmsDir() . '/storage/admin.json', '{"password_hash":"$2y$12$secret"}');
+
+        try {
+            $this->svc->create('leak.html', 'cms/storage/admin.json');
+            $this->fail('expected the clone source to be refused');
+        } catch (PageCrudException $e) {
+            $this->assertContains($e->status, [404, 422]);
+        }
+
+        $this->assertFileDoesNotExist($this->site . '/leak.html');
+    }
 }
