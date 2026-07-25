@@ -3,6 +3,23 @@
 All notable changes to EditFront v2 are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.3] — 2026-07-25
+
+### Added
+- A structure panel, opened from the toolbar, listing the page's editable
+  elements in their real nesting. Selection there happens by id rather than by
+  clicking, so elements the mouse cannot reach — a background layer with
+  `pointer-events: none`, anything behind the content — are editable for the
+  first time. Those rows are marked, since they are the reason the panel exists.
+  It filters, collapses, highlights on hover, follows what you select in the
+  page, and every element's menu gained "show in structure" for going the other
+  way.
+
+### Fixed
+- The action panel could land past the fold when the selected element was as
+  tall as the viewport, leaving it selected but impossible to act on. It now
+  stays on screen whichever side it is placed.
+
 ## [1.0.2] — 2026-07-25
 
 Two editor fixes found by using 1.0.1 on a real site.
@@ -123,6 +140,7 @@ static HTML sites — no database, no build step.
 - Layered HTML/CSS/URL/SVG sanitizers on all content that reaches public pages.
 - Bundled `.htaccess` denies web access to internals.
 
+[1.0.3]: https://github.com/canabeo/EditFront-v2/releases/tag/v1.0.3
 [1.0.2]: https://github.com/canabeo/EditFront-v2/releases/tag/v1.0.2
 [1.0.1]: https://github.com/canabeo/EditFront-v2/releases/tag/v1.0.1
 [1.0.0]: https://github.com/canabeo/EditFront-v2/releases/tag/v1.0.0
