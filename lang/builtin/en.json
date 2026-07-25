@@ -370,5 +370,10 @@
   "dashboard.reviews_link": "Reviews",
   "reviews.unpublished_ok": "Review sent back to moderation.",
   "reviews.show_more": "Show more",
-  "install.storage_exposed": "Your storage/ folder is served over HTTP — anyone can download your password hash. Deny web access to it before continuing: on Apache keep the bundled .htaccess, on nginx apply nginx.conf.example."
+  "install.storage_exposed": "Your storage/ folder is served over HTTP — anyone can download your password hash. Deny web access to it before continuing: on Apache keep the bundled .htaccess, on nginx apply nginx.conf.example.",
+  "tree.title": "Structure",
+  "tree.search": "Filter by tag, class or text",
+  "tree.empty": "Nothing to show on this page",
+  "tree.unreachable": "Cannot be clicked in the page — select it here",
+  "panel.reveal_in_tree": "Show in structure"
 }

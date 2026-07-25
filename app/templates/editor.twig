@@ -24,10 +24,19 @@
       <button class="btn" id="ef-redo" disabled title="{{ t('editor.redo') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-arrow-go-forward-line"></use></svg></button>
       <a class="btn btn-ghost" id="ef-open-live" href="#" target="_blank" rel="noopener" title="{{ t('editor.open_live') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-eye-line"></use></svg></a>
       <button class="btn" id="ef-seo" title="{{ t('seo.title') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-file-search-fill"></use></svg></button>
+      <button class="btn" id="ef-tree" title="{{ t('tree.title') }}"><svg class="ef-ico"><use href="{{ sprite }}#ef-tree"></use></svg></button>
       <button class="btn" id="ef-backups" title="{{ t('backups.title') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-history-line"></use></svg></button>
       <button class="btn btn-primary" id="ef-save" disabled>{{ t('editor.save') }}</button>
     </div>
   </header>
+  <div class="ef-tree-panel" id="ef-tree-panel" hidden>
+    <div class="ef-tree-head">
+      <strong>{{ t('tree.title') }}</strong>
+      <button type="button" class="ef-backups-close" id="ef-tree-close" title="{{ t('common.close') }}"><svg class="ef-ico"><use href="{{ sprite }}#ri-close-line"></use></svg></button>
+    </div>
+    <input type="search" class="ef-tree-search" id="ef-tree-search" placeholder="{{ t('tree.search') }}" autocomplete="off">
+    <div class="ef-tree-body" id="ef-tree-body"></div>
+  </div>
   <div class="ef-backups-panel" id="ef-backups-panel" hidden>
     <div class="ef-backups-head">
       <strong>{{ t('backups.title') }}</strong>

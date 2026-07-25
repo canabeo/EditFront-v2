@@ -404,6 +404,14 @@
             case 'cms:proxy':
                 handleProxy(d);
                 break;
+            case 'cms:tree':
+                treeNodes = d.nodes || [];
+                renderTree();
+                if (treeSelectedId) markSelected(treeSelectedId);
+                break;
+            case 'cms:tree-reveal':
+                revealInTree(d.id);
+                break;
             case 'cms:doc-ready':
                 handshakeDone = true;
                 setStatus(t('editor.status_ready', { n: (d.count || 0) }), 'ok');
@@ -418,6 +426,7 @@
                 }
                 break;
             case 'cms:select':
+                if (!treePanel.hidden) markSelected(d.id || null);
                 if (d.id) {
                     chipEl.hidden = false;
                     chipEl.textContent = (d.label || d.tag || '') + ' · ' + d.id.slice(0, 10) + '…';
@@ -442,6 +451,140 @@
     }
 
     var backupsGen = 0;
+
+    /* ------------------------------ tree -------------------------------- */
+    /* Selection in the editor happens by clicking, so anything the mouse cannot
+     * reach — a decorative layer with pointer-events:none, something behind the
+     * content — was simply not editable. The tree selects by id instead, which
+     * has no such limitation. */
+
+    var treePanel = document.getElementById('ef-tree-panel');
+    var treeBody = document.getElementById('ef-tree-body');
+    var treeSearch = document.getElementById('ef-tree-search');
+    var treeNodes = [];               // last tree received from the preview
+    var treeRows = {};                // id -> row element, for sync + reveal
+    var treeCollapsed = {};           // id -> true when its children are hidden
+    var treeSelectedId = null;
+
+    function toggleTree(force) {
+        var open = (force === true) || (force === undefined && treePanel.hidden);
+        treePanel.hidden = !open;
+        if (!open) { post({ type: 'cms:tree-hover', id: null }); return; }
+        backupsPanel.hidden = true;
+        treeBody.textContent = t('common.loading');
+        post({ type: 'cms:tree-request' });
+    }
+
+    function renderTree() {
+        treeBody.textContent = '';
+        treeRows = {};
+        var query = treeSearch.value.trim().toLowerCase();
+
+        if (!treeNodes.length) {
+            var empty = document.createElement('p');
+            empty.className = 'ef-backups-empty';
+            empty.textContent = t('tree.empty');
+            treeBody.appendChild(empty);
+            return;
+        }
+
+        // A node is shown when it matches, or when a descendant does — otherwise
+        // a match deep in the page would appear with no path leading to it.
+        function matches(node) {
+            if (!query) return true;
+            var hay = (node.tag + ' ' + (node.cls || '') + ' ' + (node.text || '')).toLowerCase();
+            if (hay.indexOf(query) !== -1) return true;
+            return (node.children || []).some(matches);
+        }
+
+        function walk(nodes, depth, host) {
+            nodes.forEach(function (node) {
+                if (!matches(node)) return;
+
+                var row = document.createElement('div');
+                row.className = 'ef-tree-row';
+                row.style.paddingLeft = (6 + depth * 14) + 'px';
+                row.setAttribute('data-id', node.id);
+
+                var kids = node.children || [];
+                var twisty = document.createElement('button');
+                twisty.type = 'button';
+                twisty.className = 'ef-tree-twisty';
+                if (kids.length) {
+                    twisty.textContent = treeCollapsed[node.id] ? '▸' : '▾';
+                    twisty.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        treeCollapsed[node.id] = !treeCollapsed[node.id];
+                        renderTree();
+                    });
+                } else {
+                    twisty.className += ' is-leaf';
+                    twisty.disabled = true;
+                }
+                row.appendChild(twisty);
+
+                var tag = document.createElement('span');
+                tag.className = 'ef-tree-tag';
+                tag.textContent = node.tag + (node.cls ? '.' + node.cls : '');
+                row.appendChild(tag);
+
+                if (node.text) {
+                    var txt = document.createElement('span');
+                    txt.className = 'ef-tree-text';
+                    txt.textContent = node.text;
+                    row.appendChild(txt);
+                }
+                if (node.unreachable) {
+                    var mark = document.createElement('span');
+                    mark.className = 'ef-tree-unreachable';
+                    mark.textContent = '◌';
+                    mark.title = t('tree.unreachable');
+                    row.appendChild(mark);
+                }
+
+                row.addEventListener('click', function () {
+                    post({ type: 'cms:tree-select', id: node.id });
+                    markSelected(node.id);
+                });
+                row.addEventListener('mouseenter', function () { post({ type: 'cms:tree-hover', id: node.id }); });
+                row.addEventListener('mouseleave', function () { post({ type: 'cms:tree-hover', id: null }); });
+
+                host.appendChild(row);
+                treeRows[node.id] = row;
+                if (node.id === treeSelectedId) row.classList.add('is-selected');
+
+                // a search shows the whole matching path, so collapsing is ignored
+                if (kids.length && (query || !treeCollapsed[node.id])) {
+                    walk(kids, depth + 1, host);
+                }
+            });
+        }
+
+        walk(treeNodes, 0, treeBody);
+    }
+
+    function markSelected(id) {
+        if (treeSelectedId && treeRows[treeSelectedId]) {
+            treeRows[treeSelectedId].classList.remove('is-selected');
+        }
+        treeSelectedId = id;
+        if (id && treeRows[id]) {
+            treeRows[id].classList.add('is-selected');
+            treeRows[id].scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    /** Open the tree focused on one node (the "show in tree" button). */
+    function revealInTree(id) {
+        toggleTree(true);
+        treeSearch.value = '';
+        treeSelectedId = id;
+        // the request is in flight; renderTree() will scroll to it on arrival
+    }
+
+    document.getElementById('ef-tree').addEventListener('click', function () { toggleTree(); });
+    document.getElementById('ef-tree-close').addEventListener('click', function () { toggleTree(false); });
+    treeSearch.addEventListener('input', renderTree);
 
     function toggleBackups() {
         if (!backupsPanel.hidden) { backupsPanel.hidden = true; backupsGen++; return; }

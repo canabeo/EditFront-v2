@@ -370,5 +370,10 @@
   "dashboard.reviews_link": "Отзывы",
   "reviews.unpublished_ok": "Отзыв возвращён на модерацию.",
   "reviews.show_more": "Показать ещё",
-  "install.storage_exposed": "Папка storage/ отдаётся по HTTP — хеш пароля может скачать кто угодно. Закройте к ней доступ до продолжения: на Apache оставьте штатный .htaccess, на nginx примените nginx.conf.example."
+  "install.storage_exposed": "Папка storage/ отдаётся по HTTP — хеш пароля может скачать кто угодно. Закройте к ней доступ до продолжения: на Apache оставьте штатный .htaccess, на nginx примените nginx.conf.example.",
+  "tree.title": "Структура",
+  "tree.search": "Фильтр по тегу, классу или тексту",
+  "tree.empty": "На этой странице нечего показать",
+  "tree.unreachable": "По клику на странице не выделяется — выберите здесь",
+  "panel.reveal_in_tree": "Показать в структуре"
 }

@@ -272,23 +272,27 @@
 
         (type.quickActions || []).forEach(function (key) { addActionButton(el, key, panel); });
 
+        // The menu is always rendered: "show in structure" applies to every
+        // element, even one whose type declares no secondary actions.
         var more = type.more || [];
-        if (more.length) {
-            var moreBtn = document.createElement('button');
-            moreBtn.type = 'button';
-            moreBtn.className = 'cms-panel-btn';
-            setIcon(moreBtn, 'ri-more-line');
-            moreBtn.title = t('panel.more');
-            moreBtn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                var items = more.map(function (key) {
-                    var a = ACTIONS[key];
-                    return a ? { label: a.label, run: function () { a.run(el, moreBtn); } } : null;
-                }).filter(Boolean);
-                showChoices(moreBtn, items);
+        var moreBtn = document.createElement('button');
+        moreBtn.type = 'button';
+        moreBtn.className = 'cms-panel-btn';
+        setIcon(moreBtn, 'ri-more-line');
+        moreBtn.title = t('panel.more');
+        moreBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var items = more.map(function (key) {
+                var a = ACTIONS[key];
+                return a ? { label: a.label, run: function () { a.run(el, moreBtn); } } : null;
+            }).filter(Boolean);
+            items.push({
+                label: t('panel.reveal_in_tree'),
+                run: function () { revealInTree(el); }
             });
-            panel.appendChild(moreBtn);
-        }
+            showChoices(moreBtn, items);
+        });
+        panel.appendChild(moreBtn);
 
         // a non-block element a plugin kind recognizes → offer "manage as …" (§6 adopt)
         var adopt = findAdoptKind(el);
@@ -862,6 +866,76 @@
         selRow('background-position', t('panel.bg_position'), ['', 'center', 'top', 'bottom', 'left', 'right']);
         selRow('background-repeat', t('panel.bg_repeat'), ['', 'no-repeat', 'repeat', 'repeat-x', 'repeat-y']);
     }
+
+    /**
+     * "Show in structure" — from a selected element straight to its place in
+     * the tree, so the panel can also be used to look around from where you are.
+     */
+    function revealInTree(el) {
+        var id = el && el.getAttribute(ID_ATTR);
+        if (id) parent.postMessage({ type: 'cms:tree-reveal', id: id }, ORIGIN);
+    }
+
+    /* ------------------------------ tree -------------------------------- */
+
+    /**
+     * Describe one node for the shell: what it is, plus enough of its text to
+     * recognise it in a list of four hundred.
+     */
+    function treeLabel(el) {
+        var cls = (el.getAttribute('class') || '')
+            .split(/\s+/)
+            .filter(function (c) { return c && c.indexOf('cms-') !== 0; })
+            .slice(0, 2)
+            .join('.');
+        var text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+        return {
+            tag: el.tagName.toLowerCase(),
+            cls: cls,
+            text: text.length > 46 ? text.slice(0, 46) + '…' : text,
+            // the shell marks these: the user cannot reach them by clicking,
+            // which is the reason the tree exists
+            unreachable: getComputedStyle(el).pointerEvents === 'none'
+        };
+    }
+
+    /**
+     * Editable nodes only, keeping their nesting. An element without an id is
+     * not skipped over — its editable descendants are lifted to its place, so
+     * the tree stays a faithful outline without listing plumbing.
+     */
+    function collectTree(root) {
+        var out = [];
+        for (var i = 0; i < root.children.length; i++) {
+            var child = root.children[i];
+            if (child.hasAttribute('data-cms-protected') || child.id === 'cms-icon-sprite') {
+                continue; // our own UI is not the user's page
+            }
+            if (child.hasAttribute(ID_ATTR)) {
+                var node = treeLabel(child);
+                node.id = child.getAttribute(ID_ATTR);
+                node.children = collectTree(child);
+                out.push(node);
+            } else {
+                out = out.concat(collectTree(child));
+            }
+        }
+        return out;
+    }
+
+    function sendTree() {
+        parent.postMessage({ type: 'cms:tree', nodes: collectTree(document.body) }, ORIGIN);
+    }
+
+    /** Highlight without selecting — the shell calls this on hover. */
+    var treeHovered = null;
+    function treeHover(id) {
+        if (treeHovered) { treeHovered.classList.remove('cms-hover'); treeHovered = null; }
+        if (!id) return;
+        var el = byId(id);
+        if (el) { el.classList.add('cms-hover'); treeHovered = el; }
+    }
+
 
     /* --------------------------- selection ----------------------------- */
 
@@ -2095,6 +2169,20 @@
         switch (d.type) {
             case 'cms:proxy-result':
                 settleProxy(d);
+                break;
+            case 'cms:tree-request':
+                sendTree();
+                break;
+            case 'cms:tree-select':
+                var target = byId(d.id);
+                if (target) {
+                    treeHover(null);
+                    select(target);
+                    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                }
+                break;
+            case 'cms:tree-hover':
+                treeHover(d.id || null);
                 break;
             case 'cms:shell-ready':
                 parent.postMessage({
