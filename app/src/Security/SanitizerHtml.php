@@ -26,6 +26,10 @@ final class SanitizerHtml
         'b', 'strong', 'i', 'em', 'u', 'a', 'br',
         'ul', 'ol', 'li', 'blockquote', 'code', 'p',
         'h2', 'h3', 'h4', 'h5', 'h6',
+        // presentational containers real sites put INSIDE editable text —
+        // badges, dots, icon holders. Dropping them silently deleted the
+        // author's markup whenever someone corrected a typo.
+        'span',
     ];
 
     private const ALLOWED_STRUCTURAL_EXTRA = [
@@ -136,6 +140,25 @@ final class SanitizerHtml
             $cmsId = $node->getAttribute('data-cms-id');
             if ($cmsId !== '' && preg_match('/^cms-[0-9a-f]{12}$/', $cmsId) === 1) {
                 $el->setAttribute('data-cms-id', $cmsId);
+            }
+            // On <span> and <i> the class is not styling ON the text, it IS the
+            // thing: the dot in a badge, the glyph of an icon font. Dropping it
+            // turned "fix a typo" into "delete the decoration". Formatting tags
+            // (b, p, h2 …) keep the stricter policy — their class is decoration
+            // about text that survives without it, and letting it through would
+            // also carry paste junk in from word processors.
+            if ($tag === 'span' || $tag === 'i') {
+                $class = trim($node->getAttribute('class'));
+                if ($class !== '' && preg_match('/^[A-Za-z0-9 _-]{1,200}$/', $class) === 1) {
+                    $el->setAttribute('class', $class);
+                }
+            }
+            // A <span> with no class carries nothing — it is what the browser
+            // emits for styleWithCSS bold and what word processors paste. Keep
+            // unwrapping those, so the only spans that survive are the ones the
+            // author put there to draw something.
+            if ($tag === 'span' && !$el->hasAttribute('class')) {
+                return $children;
             }
         }
 

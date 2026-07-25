@@ -40,8 +40,9 @@ final class OpsApplyTest extends TestCase
         $inner = $this->html5->innerHtml($p);
         $this->assertStringContainsString('Hi <b>bold</b>', $inner);
         $this->assertStringNotContainsString('script', $inner);
-        $this->assertStringNotContainsString('span class', $inner); // unwrapped
-        $this->assertStringContainsString('span', $inner);          // text kept
+        // a classed span is the author's decoration (a badge dot, an icon) and
+        // must survive an edit of the surrounding text; a bare one still unwraps
+        $this->assertStringContainsString('<span class="x">span</span>', $inner);
     }
 
     public function test_text_set_strips_dangerous_href(): void
