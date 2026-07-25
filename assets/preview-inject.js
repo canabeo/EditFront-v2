@@ -364,8 +364,23 @@
         if (rect.width === 0 && rect.height === 0 && el.firstElementChild) {
             rect = el.firstElementChild.getBoundingClientRect();
         }
-        var top = rect.top + window.scrollY - panel.offsetHeight - 8;
-        if (top < window.scrollY + 4) top = rect.bottom + window.scrollY + 8;
+        var h = panel.offsetHeight;
+        var viewTop = window.scrollY + 4;
+        var viewBottom = window.scrollY + window.innerHeight - 4;
+
+        var top = rect.top + window.scrollY - h - 8;          // above the element
+        if (top < viewTop) {
+            var below = rect.bottom + window.scrollY + 8;     // else below it
+            top = (below + h <= viewBottom)
+                ? below
+                // Neither side is on screen — the element is as tall as the
+                // viewport (a background layer, a long section). Sit inside its
+                // top edge instead of past the fold, where it cannot be reached.
+                : rect.top + window.scrollY + 8;
+        }
+        // whatever we chose, keep it visible
+        top = Math.max(viewTop, Math.min(top, viewBottom - h));
+
         var left = Math.max(4, Math.min(
             rect.left + window.scrollX,
             window.scrollX + document.documentElement.clientWidth - panel.offsetWidth - 8
