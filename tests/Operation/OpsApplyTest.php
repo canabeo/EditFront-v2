@@ -132,4 +132,58 @@ final class OpsApplyTest extends TestCase
             }
         }
     }
+
+    /**
+     * Bug 7 (MEDIUM): attr.set used a deny-list, so `srcdoc` passed every check
+     * — not an "on*" handler, not a URL attribute, not denied. Set on an
+     * <iframe> it renders attacker-authored HTML in the SAME ORIGIN and is saved
+     * into the published page that visitors load, defeating the sanitizers the
+     * project advertises. `<object data=…>` was the same shape. The gate is now
+     * an allow-list, so the next attribute of that kind fails closed by default.
+     */
+    public function test_attr_set_refuses_everything_outside_the_allow_list(): void
+    {
+        $registry = ef2_registry();
+        foreach ([
+            'srcdoc',       // executable HTML in the same origin — the reported bug
+            'data',         // <object data="..."> loads a resource; NOT a data-* attribute
+            'ping',
+            'background',
+            'srcset',
+            'is',
+            'slot',
+            'contenteditable',
+            'onmouseover',
+            'style',
+            'data-cms-id',  // the editor's own addressing namespace
+            'xmlns',
+        ] as $name) {
+            try {
+                $registry->get('attr.set')->sanitize(['name' => $name, 'value' => 'x']);
+                $this->fail('expected reject for ' . $name);
+            } catch (OperationValidationException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
+    public function test_attr_set_still_allows_what_the_editor_needs(): void
+    {
+        $registry = ef2_registry();
+        foreach ([
+            ['href', '/about.html'],
+            ['src', '/images/uploads/a.webp'],
+            ['alt', 'a photo'],
+            ['title', 'tooltip'],
+            ['class', 'lead'],
+            ['target', '_blank'],
+            ['rel', 'noopener'],
+            ['aria-label', 'close'],   // accessibility, by prefix
+            ['data-foo', 'bar'],       // inert data-* stays settable
+        ] as [$name, $value]) {
+            $out = $registry->get('attr.set')->sanitize(['name' => $name, 'value' => $value]);
+            $this->assertSame($name, $out['name']);
+            $this->assertSame($value, $out['value']);
+        }
+    }
 }
