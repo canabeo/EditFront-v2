@@ -28,7 +28,11 @@ final class AdminCreator
 
     public function isInstalled(): bool
     {
-        return $this->admins->exists();
+        // NOT just "does admin.json exist?". An instance provisioned through .env
+        // (ADMIN_USERNAME + ADMIN_PASSWORD_HASH) has no such file until the first
+        // successful login materializes it, so asking only about the file left the
+        // wizard open to anonymous visitors on a fully configured deployment.
+        return $this->admins->exists() || $this->admins->envProvisioned();
     }
 
     /**

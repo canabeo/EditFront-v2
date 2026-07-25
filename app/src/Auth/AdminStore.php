@@ -32,12 +32,39 @@ final class AdminStore
         if ($this->exists()) {
             return;
         }
+        $creds = $this->envCredentials();
+        if ($creds === null) {
+            return;
+        }
+        $this->create($creds[0], $creds[1]);
+    }
+
+    /**
+     * True when the environment fully provisions an admin. Such an instance is
+     * ALREADY installed even though admin.json does not exist yet — the file is
+     * materialized by ensureBootstrap() on the first successful login. The
+     * install wizard must treat this as installed; otherwise it stays open to
+     * anonymous visitors until the operator happens to log in.
+     */
+    public function envProvisioned(): bool
+    {
+        return $this->envCredentials() !== null;
+    }
+
+    /**
+     * Single source of truth for ".env provisions an admin": envProvisioned()
+     * and ensureBootstrap() must never disagree about it.
+     *
+     * @return array{0: string, 1: string}|null [username, password hash]
+     */
+    private function envCredentials(): ?array
+    {
         $u = $_ENV['ADMIN_USERNAME'] ?? $_SERVER['ADMIN_USERNAME'] ?? getenv('ADMIN_USERNAME');
         $h = $_ENV['ADMIN_PASSWORD_HASH'] ?? $_SERVER['ADMIN_PASSWORD_HASH'] ?? getenv('ADMIN_PASSWORD_HASH');
         if (!is_string($u) || $u === '' || !is_string($h) || $h === '') {
-            return;
+            return null;
         }
-        $this->create($u, $h);
+        return [$u, $h];
     }
 
     public function create(string $username, string $passwordHash): void
