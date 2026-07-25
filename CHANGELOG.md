@@ -46,6 +46,11 @@ recommended for every installation.
 - Fonts and the icon sprite render correctly inside the sandboxed preview, so
   the editor still shows the page as visitors see it.
 
+### Apache
+- Opening the bare `/cms/` URL returned 403 Forbidden — the directory exists, so
+  the front-controller rewrite was skipped and `Options -Indexes` turned the
+  listing refusal into an error. The very first URL after unpacking now works.
+
 ## [1.0.0] — 2026-07-02
 
 First public release. A flat-file, drop-in CMS for visual editing of existing
