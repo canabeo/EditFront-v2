@@ -108,7 +108,12 @@ final class PageService
      */
     public function delete(string $path): array
     {
-        $this->guard->assertSafeRelative($path);
+        // Same rule as create(): the basename must look like a page. Without it
+        // delete() accepted ANY legal relative path under site_root -- and since
+        // the CMS lives INSIDE site_root, "cms/storage/admin.json" needs no
+        // traversal to reach. Removing that file flips isInstalled() back to
+        // false and re-opens the install wizard to anonymous visitors.
+        $this->validateTarget($path);
         if (!$this->storage->exists($path)) {
             throw new PageCrudException('page not found: ' . $path, 404);
         }

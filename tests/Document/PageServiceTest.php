@@ -185,4 +185,54 @@ final class PageServiceTest extends TestCase
             $this->assertSame(404, $e->status);
         }
     }
+
+    /**
+     * Bug 4 (HIGH): delete() only ran assertSafeRelative(), while create() ran the
+     * full validateTarget(). Because site_root CONTAINS the CMS, "cms/storage/
+     * admin.json" is a perfectly legal relative path — no traversal needed — so
+     * the page-delete endpoint could remove the admin credential file. That flips
+     * AdminCreator::isInstalled() back to false and re-opens the install wizard
+     * to anonymous visitors (bug 1), i.e. a persistence primitive that survives a
+     * password change. delete() must apply the same basename rule as create().
+     */
+    public function test_delete_refuses_non_page_files_inside_the_cms(): void
+    {
+        $this->put('cms/storage/admin.json', '{"username":"admin","hash":"$2y$12$x"}');
+        $this->assertFileExists($this->site . '/cms/storage/admin.json');
+
+        try {
+            $this->svc->delete('cms/storage/admin.json');
+            $this->fail('expected the admin credential file to be rejected');
+        } catch (PageCrudException $e) {
+            $this->assertSame(422, $e->status);
+        }
+
+        // the credential file must survive → install stays closed
+        $this->assertFileExists($this->site . '/cms/storage/admin.json');
+    }
+
+    #[DataProvider('badNames')]
+    public function test_delete_rejects_the_same_names_create_rejects(string $bad): void
+    {
+        try {
+            $this->svc->delete($bad);
+            $this->fail('expected rejection for: ' . $bad);
+        } catch (PageCrudException $e) {
+            // 422 = refused by validation; never 404 ("looked it up and missed"),
+            // which would mean the name itself was accepted.
+            $this->assertSame(422, $e->status, 'must be refused by name validation: ' . $bad);
+        }
+    }
+
+    public function test_delete_still_works_for_a_page_in_a_subfolder(): void
+    {
+        @mkdir($this->site . '/blog', 0777, true);
+        $this->svc->create('blog/post.html');
+        $this->assertFileExists($this->site . '/blog/post.html');
+
+        $res = $this->svc->delete('blog/post.html');
+
+        $this->assertNotSame('', $res['backup_id']);
+        $this->assertFileDoesNotExist($this->site . '/blog/post.html');
+    }
 }
