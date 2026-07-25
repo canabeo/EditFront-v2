@@ -3,6 +3,24 @@
 All notable changes to EditFront v2 are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.2] — 2026-07-25
+
+Two editor fixes found by using 1.0.1 on a real site.
+
+### Fixed
+- Editing text deleted decorative markup inside it. A badge written as
+  `<span class="kicker"><span class="d"></span> Ошибка 404</span>` lost its dot
+  when someone corrected the text, because the dot IS that inner span and the
+  rich pass neither allowed `<span>` nor kept `class`. Every icon inside an
+  edited button or link died the same way. Rich mode now keeps `<span>` and
+  preserves `class` on `<span>` and `<i>` — the tags whose class is the thing
+  itself rather than styling about text. A span with no class is still
+  unwrapped, so browser and word-processor noise stays out of your files.
+- The editor preview rendered the page in fallback type with blank icon glyphs.
+  The preview is sandboxed, so fonts — which are always fetched under CORS
+  rules — were refused, and icon sets are fonts too. Their bytes are now inlined
+  into the preview, which works regardless of what the host lets you configure.
+
 ## [1.0.1] — 2026-07-25
 
 A security release. Every item was found by an external review of 1.0.0, then
@@ -105,5 +123,6 @@ static HTML sites — no database, no build step.
 - Layered HTML/CSS/URL/SVG sanitizers on all content that reaches public pages.
 - Bundled `.htaccess` denies web access to internals.
 
+[1.0.2]: https://github.com/canabeo/EditFront-v2/releases/tag/v1.0.2
 [1.0.1]: https://github.com/canabeo/EditFront-v2/releases/tag/v1.0.1
 [1.0.0]: https://github.com/canabeo/EditFront-v2/releases/tag/v1.0.0
