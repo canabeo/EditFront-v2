@@ -3,6 +3,26 @@
 All notable changes to EditFront v2 are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.4] — 2026-08-17
+
+### Fixed
+- Inserting into a container. A new element was always placed *after* the
+  selection, which quietly put part of every layout out of reach: with a grid
+  selected, the new card became the grid's sibling — full width, outside the
+  layout, and for an empty gallery invisible — while adding a card *into* the
+  grid was impossible. The runtime now looks at what is selected: a container
+  (a flex or grid box, or anything already holding editable elements) takes
+  the new element as its last child; a leaf keeps the old behaviour and gets
+  it as the next sibling. The server already knew both placements; only the
+  editor never asked for the second one. Same rule for plugin blocks and
+  built-in templates. Void elements (images, rules) can hold nothing and are
+  treated as leaves, as the server insists.
+
+### Tests
+- Two contract tests pin the server side the editor now relies on: a plugin
+  block inserted `inside-last` becomes the container's last child with its
+  siblings intact, and inserting inside a void element is refused.
+
 ## [1.0.3] — 2026-07-25
 
 ### Added

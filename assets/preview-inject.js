@@ -1415,20 +1415,37 @@
         el.remove();
     }
 
+    // Where a new element goes relative to the selection. Inserting was always
+    // "after", which quietly put part of every layout out of reach: with a grid
+    // selected, the new card became the grid's SIBLING — full-width, outside the
+    // layout, and for an empty gallery invisible — while adding a card INTO the
+    // grid was impossible. So: a container takes the new element as its last
+    // child; a leaf keeps the old behaviour and gets it as the next sibling.
+    // A container is a flex/grid box or anything already holding editable
+    // children. Void elements can hold nothing (the server refuses too).
+    var VOID_TAGS = { IMG: 1, HR: 1, BR: 1, INPUT: 1, SOURCE: 1, TRACK: 1, WBR: 1, AREA: 1, COL: 1, EMBED: 1 };
+    function insertPositionFor(el) {
+        if (!el || VOID_TAGS[el.tagName]) return 'after';
+        var d = getComputedStyle(el).display;
+        if (d === 'grid' || d === 'inline-grid' || d === 'flex' || d === 'inline-flex') return 'inside-last';
+        return el.querySelector('[' + ID_ATTR + ']') ? 'inside-last' : 'after';
+    }
+
     function insertTemplate(refEl, templateKey) {
         var tpl = TEMPLATES[templateKey];
         if (!tpl) return;
         var newId = genId();
+        var position = insertPositionFor(refEl);
         emitCommand('node.insert', null, {
             refId: idOf(refEl),
-            position: 'after',
+            position: position,
             template: templateKey,
             newId: newId
         }, {}, null);
         var node = buildTemplateNode(tpl.html);
         if (node) {
             node.setAttribute(ID_ATTR, newId);
-            refEl.parentNode.insertBefore(node, refEl.nextSibling);
+            placeRelative(node, refEl, position);
             select(node);
         }
     }
@@ -1596,10 +1613,11 @@
         if (!k) return;
         var newId = genId();
         var props = schemaDefaults(k.schema);
+        var position = insertPositionFor(refEl);
         emitCommand('plugin.' + k.slug + '.insert', null,
-            { kind: kind, refId: idOf(refEl), position: 'after', newId: newId, props: props }, {}, null);
+            { kind: kind, refId: idOf(refEl), position: position, newId: newId, props: props }, {}, null);
         var block = newPluginBlockEl(kind, newId);
-        refEl.parentNode.insertBefore(block, refEl.nextSibling);
+        placeRelative(block, refEl, position);
         nodeProps[newId] = props;
         ELEMENTS[newId] = { editable: true, status: 'ok', kind: kind, slug: k.slug, label: k.label, props: props };
         renderPluginNode(block, props);

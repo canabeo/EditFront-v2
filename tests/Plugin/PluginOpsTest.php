@@ -107,4 +107,43 @@ final class PluginOpsTest extends TestCase
         ]);
         return $doc;
     }
+
+    // The editor now inserts INTO a selected container (a grid, a flex row) as
+    // its last child rather than beside it — that path leans on these two facts.
+    public function test_insert_inside_last_appends_into_the_container(): void
+    {
+        $doc = ef2_doc(
+            '<div data-cms-id="cms-aaaaaaaaaaaa">'
+            . '<p data-cms-id="cms-cccccccccccc">first</p>'
+            . '<p data-cms-id="cms-dddddddddddd">second</p>'
+            . '</div>'
+        );
+        $this->ops['plugin.pricing-table.insert']->apply($doc, null, [
+            'kind' => 'pricing-table',
+            'refId' => 'cms-aaaaaaaaaaaa',
+            'position' => 'inside-last',
+            'newId' => 'cms-bbbbbbbbbbbb',
+            'props' => ['tiers' => [['title' => 'Basic', 'price' => 9, 'featured' => false]]],
+        ]);
+
+        $container = (new Annotator())->findById($doc, 'cms-aaaaaaaaaaaa');
+        $block = (new Annotator())->findById($doc, 'cms-bbbbbbbbbbbb');
+        $this->assertNotNull($block);
+        $this->assertSame($container, $block->parentNode, 'block must be a child of the ref, not its sibling');
+        $this->assertSame($block, $container->lastChild, 'block must be the last child');
+        $this->assertSame(3, $container->childNodes->length, 'existing children stay in place');
+    }
+
+    public function test_insert_inside_a_void_element_is_rejected(): void
+    {
+        $doc = ef2_doc('<img data-cms-id="cms-aaaaaaaaaaaa" src="x.jpg" alt="">');
+        $this->expectException(OperationApplyException::class);
+        $this->ops['plugin.pricing-table.insert']->apply($doc, null, [
+            'kind' => 'pricing-table',
+            'refId' => 'cms-aaaaaaaaaaaa',
+            'position' => 'inside-last',
+            'newId' => 'cms-bbbbbbbbbbbb',
+            'props' => ['tiers' => [['title' => 'Basic', 'price' => 9, 'featured' => false]]],
+        ]);
+    }
 }
