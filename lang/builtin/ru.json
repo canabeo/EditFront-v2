@@ -268,7 +268,7 @@
   "image.upload_failed": "Не удалось загрузить",
   "image.multi_hint": "Отметьте нужные фото",
   "image.add_selected": "Добавить",
-  "image.add_selected_n": "Добавить ({n})",
+  "image.add_selected_n": "Добавить (:n)",
   "backups.title": "Бэкапы",
   "backups.empty": "Для этой страницы пока нет бэкапов.",
   "backups.restore": "Восстановить",

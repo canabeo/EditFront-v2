@@ -678,7 +678,7 @@
             if (!addBtn) return;
             addBtn.disabled = chosen.length === 0;
             addBtn.textContent = chosen.length
-                ? t('image.add_selected_n', { n: chosen.length }, 'Добавить (' + chosen.length + ')')
+                ? t('image.add_selected_n', { n: chosen.length }, 'Добавить (:n)')
                 : t('image.add_selected', { n: 0 }, 'Добавить');
         }
         proxy('images')
