@@ -3,6 +3,35 @@
 All notable changes to EditFront v2 are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.6] — 2026-08-17
+
+### Added
+- The image picker can select several photos at once. Callers opt in
+  (`ctx.pickImages` for plugins); the gallery tab then toggles cells and a
+  footer button confirms "Add (N)", the upload tab accepts several files and
+  uploads them in order. Single mode — the classic one-click replace for an
+  `<img>` — is unchanged.
+- The gallery example plugin adds photos in bulk through it, and shows an
+  explicit empty state (a dashed frame with "add photos") in the editor preview
+  instead of a transparent card that was easy to miss.
+
+### Fixed
+- The action panel could sit in the band a site's fixed or sticky header
+  occupies. It is above the header in stacking order and technically
+  clickable, but drawn over dark navigation it reads as part of it. The
+  reserved band is now measured from the page's own pinned elements and the
+  panel is kept below it.
+- Selecting an element from the structure tree scrolled the preview smoothly
+  *after* placing the panel, so the page slid out from under it — and a site
+  that sets `html { scroll-behavior: smooth }` animated even an "instant"
+  scroll. The tree now scrolls first, forcing an instant jump for that one
+  call, and selects afterwards; the panel is placed once, where the element
+  ends up.
+
+### i18n
+- `image.upload_failed`, `image.multi_hint`, `image.add_selected`,
+  `image.add_selected_n` (ru/en).
+
 ## [1.0.5] — 2026-08-17
 
 ### Fixed

@@ -357,6 +357,28 @@
         container.appendChild(btn);
     }
 
+    // The band at the top of the viewport that the PAGE's own fixed/sticky
+    // chrome occupies (a site header, a cookie bar). The panel must not be
+    // placed there: it would sit on top of dark navigation and be invisible
+    // to the eye even though it is above it in stacking order. Cheap scan —
+    // only elements that are currently pinned and touch the top edge count.
+    function pinnedTopBand() {
+        var band = 0;
+        var ui = document.getElementById('cms-ui-root');
+        var els = document.body ? document.body.querySelectorAll('header, nav, div, section, aside') : [];
+        for (var i = 0; i < els.length && i < 400; i++) {
+            var e = els[i];
+            if (ui && ui.contains(e)) continue;
+            var cs = getComputedStyle(e);
+            if (cs.position !== 'fixed' && cs.position !== 'sticky') continue;
+            if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+            var r = e.getBoundingClientRect();
+            if (r.height === 0 || r.top > 4 || r.bottom <= 0) continue;   // not pinned to the top edge
+            if (r.bottom > band && r.bottom < window.innerHeight * 0.5) band = r.bottom;
+        }
+        return band;
+    }
+
     function positionPanel(el) {
         var rect = el.getBoundingClientRect();
         // a display:contents plugin wrapper (§6 adopt) has no box — anchor to its
@@ -365,7 +387,7 @@
             rect = el.firstElementChild.getBoundingClientRect();
         }
         var h = panel.offsetHeight;
-        var viewTop = window.scrollY + 4;
+        var viewTop = window.scrollY + 4 + pinnedTopBand();
         var viewBottom = window.scrollY + window.innerHeight - 4;
 
         var top = rect.top + window.scrollY - h - 8;          // above the element
@@ -471,7 +493,11 @@
         document.removeEventListener('keydown', imgEscHandler, true);
     }
 
-    function showImagePicker(el, onPick) {
+    // opts.multi: gallery cells toggle and a footer button confirms; onPick then
+    // receives an ARRAY of urls. Without it the picker is the classic one-shot.
+    function showImagePicker(el, onPick, opts) {
+        opts = opts || {};
+        var multi = !!opts.multi;
         closePopover();
         closeImagePicker();
 
@@ -514,8 +540,13 @@
         }
         function pick(url) {
             closeImagePicker();
-            if (typeof onPick === 'function') onPick(url);
+            if (typeof onPick === 'function') onPick(multi ? [url] : url);
             else setAttrValue(el, 'src', url);
+        }
+        // multi mode: hand the whole selection over at once
+        function pickMany(urls) {
+            closeImagePicker();
+            if (typeof onPick === 'function') onPick(urls);
         }
 
         var panes = {};
@@ -537,8 +568,12 @@
             panes[key].render(bodyWrap, pick, setStatus);
         }
 
-        makeTab('upload', t('image.tab_upload'), renderUploadPane);
-        makeTab('gallery', t('image.tab_gallery'), renderGalleryPane);
+        makeTab('upload', t('image.tab_upload'), function (host, pickOne, setStatus) {
+            renderUploadPane(host, pickOne, setStatus, multi ? pickMany : null);
+        });
+        makeTab('gallery', t('image.tab_gallery'), function (host, pickOne, setStatus) {
+            renderGalleryPane(host, pickOne, setStatus, multi ? pickMany : null);
+        });
         makeTab('url', t('image.tab_url'), function (host) {
             var input = document.createElement('input');
             input.type = 'text';
@@ -562,7 +597,7 @@
         document.addEventListener('keydown', imgEscHandler, true);
     }
 
-    function renderUploadPane(host, pick, setStatus) {
+    function renderUploadPane(host, pick, setStatus, pickMany) {
         var drop = document.createElement('label');
         drop.className = 'cms-imgpick-drop';
         drop.textContent = t('image.drop_hint');
@@ -573,21 +608,38 @@
         drop.appendChild(input);
         host.appendChild(drop);
 
+        function uploadOne(file) {
+            return proxy('upload', { file: file }).then(function (res) {
+                if (res.status === 200 && res.data.ok) return res.data.url;
+                throw new Error(res.data.error || ('HTTP ' + res.status));
+            });
+        }
         function handle(file) {
             if (!file) return;
             setStatus(t('image.uploading'), '');
-            var fd = new FormData();
-            fd.append('file', file);
-            proxy('upload', { file: file }).then(function (res) {
-                if (res.status === 200 && res.data.ok) {
-                    pick(res.data.url);
-                } else {
-                    setStatus(res.data.error || ('HTTP ' + res.status), 'error');
-                }
-            }).catch(function (err) { setStatus(String(err && err.message || err), 'error'); });
+            uploadOne(file).then(function (url) { pick(url); })
+                .catch(function (err) { setStatus(String(err && err.message || err), 'error'); });
         }
+        // multi: upload in order, keep going past a failure, hand over what landed
+        function handleMany(files) {
+            var list = Array.prototype.slice.call(files || []);
+            if (!list.length) return;
+            if (!pickMany || list.length === 1) { handle(list[0]); return; }
+            var urls = [], failed = 0, i = 0;
+            function next() {
+                if (i >= list.length) {
+                    if (urls.length) pickMany(urls);
+                    else setStatus(t('image.upload_failed', null, 'Не удалось загрузить'), 'error');
+                    return;
+                }
+                setStatus(t('image.uploading') + ' ' + (i + 1) + ' / ' + list.length, '');
+                uploadOne(list[i++]).then(function (u) { urls.push(u); }, function () { failed++; }).then(next);
+            }
+            next();
+        }
+        if (pickMany) input.multiple = true;
 
-        input.addEventListener('change', function () { handle(input.files && input.files[0]); });
+        input.addEventListener('change', function () { handleMany(input.files); });
         ['dragover', 'dragenter'].forEach(function (ev) {
             drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('is-over'); });
         });
@@ -595,15 +647,40 @@
             drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('is-over'); });
         });
         drop.addEventListener('drop', function (e) {
-            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) handle(e.dataTransfer.files[0]);
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) handleMany(e.dataTransfer.files);
         });
     }
 
-    function renderGalleryPane(host, pick, setStatus) {
+    function renderGalleryPane(host, pick, setStatus, pickMany) {
         setStatus(t('common.loading'), '');
         var grid = document.createElement('div');
         grid.className = 'cms-imgpick-grid';
         host.appendChild(grid);
+        var chosen = [];          // multi: urls in click order
+        var footer = null, addBtn = null;
+        if (pickMany) {
+            footer = document.createElement('div');
+            footer.className = 'cms-imgpick-footer';
+            var hint = document.createElement('span');
+            hint.className = 'cms-imgpick-footer-hint';
+            hint.textContent = t('image.multi_hint', null, 'Отметьте нужные фото');
+            addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'cms-imgpick-add';
+            addBtn.disabled = true;
+            addBtn.textContent = t('image.add_selected', { n: 0 }, 'Добавить');
+            addBtn.addEventListener('click', function () { if (chosen.length) pickMany(chosen.slice()); });
+            footer.appendChild(hint);
+            footer.appendChild(addBtn);
+            host.appendChild(footer);
+        }
+        function refreshFooter() {
+            if (!addBtn) return;
+            addBtn.disabled = chosen.length === 0;
+            addBtn.textContent = chosen.length
+                ? t('image.add_selected_n', { n: chosen.length }, 'Добавить (' + chosen.length + ')')
+                : t('image.add_selected', { n: 0 }, 'Добавить');
+        }
         proxy('images')
             .then(function (d) {
                 setStatus('');
@@ -619,7 +696,20 @@
                     thumb.alt = img.name;
                     thumb.loading = 'lazy';
                     cell.appendChild(thumb);
-                    cell.addEventListener('click', function () { pick(img.url); });
+                    if (pickMany) {
+                        var mark = document.createElement('span');
+                        mark.className = 'cms-imgpick-check';
+                        cell.appendChild(mark);
+                        cell.setAttribute('aria-pressed', 'false');
+                        cell.addEventListener('click', function () {
+                            var at = chosen.indexOf(img.url);
+                            if (at === -1) { chosen.push(img.url); cell.classList.add('is-chosen'); cell.setAttribute('aria-pressed', 'true'); }
+                            else { chosen.splice(at, 1); cell.classList.remove('is-chosen'); cell.setAttribute('aria-pressed', 'false'); }
+                            refreshFooter();
+                        });
+                    } else {
+                        cell.addEventListener('click', function () { pick(img.url); });
+                    }
                     grid.appendChild(cell);
                 });
             })
@@ -1717,6 +1807,8 @@
             arrayMove: function (p, f, t) { pluginArrayMove(el, p, f, t); refreshPluginEditor(el); },
             getProps: function () { return clone(nodeProps[idOf(el)]); },
             pickImage: function (cb) { showImagePicker(el, cb); },
+            // several at once; cb receives an array of urls (gallery/upload tabs)
+            pickImages: function (cb) { showImagePicker(el, cb, { multi: true }); },
             t: function (k, p, f) { return t(k, p, f); }
         };
     }
@@ -2210,8 +2302,19 @@
                 var target = byId(d.id);
                 if (target) {
                     treeHover(null);
+                    // scroll FIRST and instantly: select() places the panel for
+                    // the current geometry, and a smooth scroll afterwards slid
+                    // the page out from under it — the user aimed at a panel
+                    // that had already moved.
+                    // 'auto' still animates when the PAGE sets
+                    // html { scroll-behavior: smooth } — force an instant jump
+                    // for this one call, then restore the site's own setting.
+                    var rootEl = document.documentElement;
+                    var prevSb = rootEl.style.scrollBehavior;
+                    rootEl.style.scrollBehavior = 'auto';
+                    target.scrollIntoView({ block: 'center', behavior: 'instant' in window ? 'instant' : 'auto' });
+                    rootEl.style.scrollBehavior = prevSb;
                     select(target);
-                    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
                 }
                 break;
             case 'cms:tree-hover':

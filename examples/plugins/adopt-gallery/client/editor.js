@@ -39,6 +39,17 @@
       var title = props.title || '';
       var cover = props.cover || (srcs.length ? srcs[0] : '');
       var dots = srcs.map(function () { return '<span class="project-card__dot"></span>'; }).join('');
+      // No photos yet → an explicit empty state, or the card is a transparent
+      // box the user cannot see. Editor preview only; the live render is untouched.
+      if (!srcs.length && !cover) {
+        return '<div class="project-card cms-gal-empty" data-images="[]">'
+          + '<div class="cms-gal-empty__inner">'
+          + '<div class="cms-gal-empty__icon">🖼</div>'
+          + '<div class="cms-gal-empty__title">' + esc(title || 'Галерея') + '</div>'
+          + '<div class="cms-gal-empty__hint">Добавьте фото через панель «Галерея» →</div>'
+          + '</div>'
+          + '</div>';
+      }
       var img = '<img'
         + (cover ? ' src="' + esc(cover) + '"' : '')
         + ' alt="' + esc(title) + '" class="project-card__img">';
@@ -141,8 +152,14 @@
       add.textContent = t('plugin.adopt-gallery.add_image', null, '+ Добавить картинку');
       add.addEventListener('click', function (e) {
         e.stopPropagation();
-        ctx.pickImage(function (url) {
-          if (url) ctx.arrayInsert('images', imgs.length, { src: url });
+        // several photos in one go; append in the order they were chosen
+        var picker = typeof ctx.pickImages === 'function' ? ctx.pickImages : ctx.pickImage;
+        picker.call(ctx, function (result) {
+          var urls = Array.isArray(result) ? result : (result ? [result] : []);
+          var at = imgs.length;
+          urls.forEach(function (url) {
+            if (typeof url === 'string' && url) ctx.arrayInsert('images', at++, { src: url });
+          });
         });
       });
       host.appendChild(add);
