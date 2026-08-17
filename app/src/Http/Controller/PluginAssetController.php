@@ -33,32 +33,46 @@ final class PluginAssetController
     {
     }
 
+    /**
+     * The one place that decides whether a plugin client file may be read:
+     * slug shape, no traversal, extension whitelist, realpath inside
+     * plugins/<slug>/, never src/, fixtures/ or the manifest. Returns the real
+     * path or null. Shared with the preview, which inlines these files.
+     */
+    public static function resolve(Config $config, string $slug, string $rel): ?string
+    {
+        if (preg_match('/^[a-z][a-z0-9-]{1,39}$/', $slug) !== 1) {
+            return null;
+        }
+        if ($rel === '' || str_contains($rel, "\0") || str_contains($rel, '..')) {
+            return null;
+        }
+        $ext = strtolower(pathinfo($rel, PATHINFO_EXTENSION));
+        if (!isset(self::MIME[$ext])) {
+            return null;
+        }
+        $pluginRoot = realpath($config->cmsDir() . '/plugins/' . $slug);
+        $file = realpath($config->cmsDir() . '/plugins/' . $slug . '/' . $rel);
+        if ($pluginRoot === false || $file === false || !str_starts_with($file, $pluginRoot . '/') || !is_file($file)) {
+            return null;
+        }
+        // never serve server-side code or the manifest/fixtures through this route
+        if (str_starts_with($rel, 'src/') || str_starts_with($rel, 'fixtures/') || basename($rel) === 'plugin.json') {
+            return null;
+        }
+        return $file;
+    }
+
     /** @param array<string, string> $args */
     public function serve(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
     {
         $slug = $args['slug'] ?? '';
         $rel = $args['path'] ?? '';
-        if (preg_match('/^[a-z][a-z0-9-]{1,39}$/', $slug) !== 1) {
+        $file = self::resolve($this->config, $slug, $rel);
+        if ($file === null) {
             throw new HttpNotFoundException($request);
         }
-        if ($rel === '' || str_contains($rel, "\0") || str_contains($rel, '..')) {
-            throw new HttpNotFoundException($request);
-        }
-
         $ext = strtolower(pathinfo($rel, PATHINFO_EXTENSION));
-        if (!isset(self::MIME[$ext])) {
-            throw new HttpNotFoundException($request);
-        }
-
-        $pluginRoot = realpath($this->config->cmsDir() . '/plugins/' . $slug);
-        $file = realpath($this->config->cmsDir() . '/plugins/' . $slug . '/' . $rel);
-        if ($pluginRoot === false || $file === false || !str_starts_with($file, $pluginRoot . '/') || !is_file($file)) {
-            throw new HttpNotFoundException($request);
-        }
-        // never serve server-side code or the manifest/fixtures through this route
-        if (str_starts_with($rel, 'src/') || str_starts_with($rel, 'fixtures/') || basename($rel) === 'plugin.json') {
-            throw new HttpNotFoundException($request);
-        }
 
         $response->getBody()->write((string) file_get_contents($file));
         return $response

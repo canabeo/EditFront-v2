@@ -146,6 +146,51 @@ final class EditorController
                 }
             }
 
+            // Plugin editor code cannot be fetched from inside the sandbox: an
+            // opaque origin sends no cookies, and /plugin-asset needs the session
+            // — the tag would receive the login page and register nothing. Embed
+            // each plugin's editor_js/css here, where we ARE the session.
+            // Manifests only carry what plugin.json declares, path-guarded by
+            // the same resolver the asset route uses.
+            // $plugins is the client manifest built above; its editor_js/css are
+            // URLs of the form …/plugin-asset/<slug>/<rel> — take <rel> back out.
+            $relOf = static function (?string $url, string $slug): ?string {
+                if ($url === null) {
+                    return null;
+                }
+                $marker = '/plugin-asset/' . $slug . '/';
+                $at = strpos($url, $marker);
+                return $at === false ? null : substr($url, $at + strlen($marker));
+            };
+            foreach ($plugins as $slug => $manifest) {
+                $cssRel = $relOf($manifest['editor_css'] ?? null, (string) $slug);
+                $css = $cssRel !== null
+                    ? PluginAssetController::resolve($this->config, (string) $slug, $cssRel)
+                    : null;
+                if ($css !== null) {
+                    $styleEl = $doc->createElement('style');
+                    $styleEl->setAttribute('data-cms-plugin-css', (string) $slug);
+                    // a stylesheet cannot close itself early
+                    $styleEl->appendChild($doc->createTextNode(str_ireplace('</style', '<\\/style', (string) file_get_contents($css))));
+                    $body->appendChild($styleEl);
+                }
+                $jsRel = $relOf($manifest['editor_js'] ?? null, (string) $slug);
+                $js = $jsRel !== null
+                    ? PluginAssetController::resolve($this->config, (string) $slug, $jsRel)
+                    : null;
+                if ($js !== null) {
+                    $scriptEl = $doc->createElement('script');
+                    // inert: the runtime executes it once window.__cms exists —
+                    // a plugin's editor.js returns early when it does not
+                    $scriptEl->setAttribute('type', 'text/plain');
+                    $scriptEl->setAttribute('data-cms-plugin-js', (string) $slug);
+                    // "</script>" inside a JS string would end the element; the escape
+                    // is a no-op for the JS engine
+                    $scriptEl->appendChild($doc->createTextNode(str_ireplace('</script', '<\\/script', (string) file_get_contents($js))));
+                    $body->appendChild($scriptEl);
+                }
+            }
+
             $script = $doc->createElement('script');
             $script->setAttribute('src', $this->url->asset('preview-inject.js'));
             $script->setAttribute('defer', 'defer');

@@ -3,6 +3,27 @@
 All notable changes to EditFront v2 are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.5] — 2026-08-17
+
+### Fixed
+- Plugin blocks rendered as empty boxes in the editor on every site with a
+  plugin — a fallout of the 1.0.1 sandbox. The preview document has an opaque
+  origin, and an opaque origin sends no cookies; plugin editor scripts were
+  fetched from the session-guarded asset route, so the request bounced to the
+  login page and the `<script>` swallowed HTML. Nothing registered, and a
+  freshly inserted gallery, pricing table or before/after block came up as a
+  bare `<div>`. The server now embeds each plugin's editor code and styles into
+  the preview it builds — it is the session at that point — as inert
+  `text/plain` scripts that the runtime executes once its own registry exists.
+  No request leaves the sandbox for them; the asset route stays guarded and
+  keeps working for the rare unsandboxed embed. Same shape as the icon sprite
+  and web fonts, which the sandbox broke the same way in 1.0.2.
+
+### Tests
+- A source-level guard pins the arrangement: the controller inlines
+  `data-cms-plugin-js` / `data-cms-plugin-css`, and the runtime looks for the
+  inlined copy before it would ever append a `src` tag.
+
 ## [1.0.4] — 2026-08-17
 
 ### Fixed

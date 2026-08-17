@@ -116,4 +116,24 @@ final class PreviewSandboxTest extends TestCase
         // the reference must drop the file part when the sprite is in the document
         $this->assertStringContainsString("document.getElementById('cms-icon-sprite') ? '' : ICONS_URL", $js);
     }
+
+    /**
+     * Follow-up to the sandbox: an opaque origin sends NO cookies, so anything
+     * the preview fetches from an auth-guarded route comes back as the login
+     * page. Plugin editor scripts lived behind /plugin-asset — every plugin
+     * block rendered empty in the editor, silently. The scripts must travel
+     * inside the preview document, which the (authenticated) server builds.
+     */
+    public function test_plugin_editor_scripts_are_inlined_into_the_preview(): void
+    {
+        $controller = $this->read('app/src/Http/Controller/EditorController.php');
+        // the controller embeds each enabled plugin's editor_js as inline <script>
+        $this->assertStringContainsString("setAttribute('data-cms-plugin-js'", $controller);
+        $this->assertStringContainsString("setAttribute('data-cms-plugin-css'", $controller);
+
+        $js = $this->read('assets/preview-inject.js');
+        // the runtime must not append <script src=…plugin-asset…> tags any more:
+        // it relies on the inlined ones and only falls back to src when none is present
+        $this->assertStringContainsString("querySelector('script[data-cms-plugin-js=\"' +", $js);
+    }
 }

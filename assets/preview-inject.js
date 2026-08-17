@@ -2264,18 +2264,34 @@
     }
 
     // load each plugin's editor_js/css into the iframe so registerKind runs (§6.4)
+    // The server inlines each plugin's editor_js/css into this document
+    // (a sandboxed origin sends no cookies, so a src= to the auth-guarded
+    // asset route would come back as the login page). Only when a plugin
+    // arrived without its inline copy do we fall back to fetching by src.
     function loadPluginAssets() {
         var seenJs = {}, seenCss = {};
         Object.keys(PLUGINS).forEach(function (slug) {
             var p = PLUGINS[slug];
-            if (p.editor_css && !seenCss[p.editor_css]) {
+            var hasCss = !!document.querySelector('style[data-cms-plugin-css="' + slug + '"]');
+            var inlineJs = document.querySelector('script[data-cms-plugin-js="' + slug + '"]');
+            var hasJs = false;
+            if (inlineJs && !seenJs['inline:' + slug]) {
+                seenJs['inline:' + slug] = 1;
+                // run the server-inlined copy now, when window.__cms exists
+                var run = document.createElement('script');
+                run.setAttribute('data-cms-protected', 'true');
+                run.text = inlineJs.text || inlineJs.textContent || '';
+                document.head.appendChild(run);
+                hasJs = true;
+            }
+            if (p.editor_css && !hasCss && !seenCss[p.editor_css]) {
                 seenCss[p.editor_css] = 1;
                 var l = document.createElement('link');
                 l.rel = 'stylesheet'; l.href = p.editor_css;
                 l.setAttribute('data-cms-protected', 'true');
                 document.head.appendChild(l);
             }
-            if (p.editor_js && !seenJs[p.editor_js]) {
+            if (p.editor_js && !hasJs && !seenJs[p.editor_js]) {
                 seenJs[p.editor_js] = 1;
                 var s = document.createElement('script');
                 s.src = p.editor_js;
