@@ -188,6 +188,10 @@ A module plugin declares no `kinds`, no `server` class and no `fixtures` — tho
 belong to block types. Its tests live in `plugins/<slug>/tests/` and run with
 the rest of the suite.
 
+A plugin folder is often a symlink to wherever the plugin is really kept, so a
+plugin's tests must not walk up from `__DIR__` to reach the CMS — `__DIR__`
+resolves the symlink and lands somewhere else. Use `ef2_cms_root()`.
+
 ## Security notes
 
 - `.env`, `storage/`, `vendor/`, `app/`, `tests/` and plugin sources are denied

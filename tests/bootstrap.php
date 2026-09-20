@@ -39,6 +39,16 @@ spl_autoload_register(static function (string $class): void {
 });
 
 /**
+ * The CMS root, for tests that need to reach it by path. A plugin's tests must
+ * NOT walk up from __DIR__: a plugin folder is often a symlink into its own
+ * repository, and __DIR__ resolves that away, landing somewhere else entirely.
+ */
+function ef2_cms_root(): string
+{
+    return dirname(__DIR__);
+}
+
+/**
  * Create an isolated temp dir tree for a test and return its path.
  * Каждый тест работает в своём корне — никаких следов в реальном siteRoot.
  */
