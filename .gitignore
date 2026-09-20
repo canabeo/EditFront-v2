@@ -9,3 +9,4 @@
 *.bak
 /lang/user/*.json
 !/lang/user/.gitkeep
+/graphify-out/
