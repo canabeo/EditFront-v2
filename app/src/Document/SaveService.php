@@ -30,6 +30,15 @@ final class SaveService
 {
     private const MAX_OPS = 200;
 
+    /**
+     * Operations that do not keep the target's subtree intact: text.set swaps
+     * innerHTML, node.replace swaps the element, node.delete removes it. Aiming
+     * one of these at an ancestor of protected content destroys that content,
+     * so they are refused there. Moving or duplicating carries the subtree along
+     * and stays allowed.
+     */
+    private const SUBTREE_DESTRUCTIVE = ['text.set', 'node.replace', 'node.delete'];
+
     public function __construct(
         private readonly FileStorage $storage,
         private readonly Html5 $html5,
@@ -104,6 +113,7 @@ final class SaveService
 
         // 3. apply in order
         $doc = $this->html5->parse($current);
+        $protectedBefore = $this->annotator->countProtected($doc);
         $applied = 0;
         $warnings = [];
         $journalOps = [];
@@ -120,6 +130,13 @@ final class SaveService
                         $warnings[] = "op#$i ($key): target is protected: $targetId";
                         continue;
                     }
+                    if (
+                        in_array($key, self::SUBTREE_DESTRUCTIVE, true)
+                        && $this->annotator->containsProtected($target)
+                    ) {
+                        $warnings[] = "op#$i ($key): target holds protected content: $targetId";
+                        continue;
+                    }
                 }
                 $spec->apply($doc, $target, $forward);
                 $applied++;
@@ -127,6 +144,21 @@ final class SaveService
             } catch (OperationApplyException $e) {
                 $warnings[] = "op#$i ($key): " . $e->getMessage();
             }
+        }
+
+        // 3b. fail-closed backstop: nothing may have eaten protected content.
+        // The per-op guard above covers the ops we know about; this catches any
+        // other path (a future op, a plugin op) before a single byte is written.
+        $protectedAfter = $this->annotator->countProtected($doc);
+        if ($protectedAfter < $protectedBefore) {
+            $this->logger->error('save.protected_loss', [
+                'page' => $relPath,
+                'before' => $protectedBefore,
+                'after' => $protectedAfter,
+            ]);
+            throw new OperationValidationException(
+                'save refused: the batch would remove protected content on the page'
+            );
         }
 
         // 4. reconcile plugin props sidecar from the final DOM (§6.5) — best-effort

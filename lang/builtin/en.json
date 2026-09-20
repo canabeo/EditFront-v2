@@ -196,6 +196,7 @@
   "editor.draft_restored": "Draft restored — :n steps (Ctrl+Z works)",
   "editor.conflict_stale": "A draft was found, but the page has changed since.\n\nOK — save the draft over the current version\n(the current one goes to a backup; entries that don't fit are listed).\nCancel — discard the draft.",
   "editor.conflict_external": "The page was changed outside the editor.\n\nOK — save my changes over it (the current version goes to a backup).\nCancel — discard my changes and reload the page.",
+  "editor.protected_hold": "This part updates itself — a deadline, a date, a countdown. It cannot be edited by hand.",
   "panel.block": "Block",
   "panel.more": "More",
   "panel.type_heading": "Heading",

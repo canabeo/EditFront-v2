@@ -3,6 +3,20 @@
 All notable changes to EditFront v2 are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- **Protection now holds against the container, not just the node.**
+  `data-cms-protected` stopped the editor from targeting the node itself, but
+  `text.set` replaces innerHTML — so editing an ANCESTOR wiped the protected
+  subtree, and the loss only surfaced on the next open. `text.set`,
+  `node.replace` and `node.delete` aimed at a container of protected content are
+  now refused with a warning, and the save pipeline counts protected nodes
+  before and after the batch: a drop refuses the whole save before a byte is
+  written. The editor refuses to open such a box for typing and says why.
+  Protected tags (`<script>`, `<style>`, …) count as protected content too — an
+  inline script inside an edited box was lost the same silent way.
+
 ## [1.0.6] — 2026-08-17
 
 ### Added

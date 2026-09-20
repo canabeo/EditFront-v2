@@ -1098,6 +1098,16 @@
         }
     }
 
+    /* The element holds automatic content. Say so instead of opening an editor
+     * whose every keystroke would be thrown away by the server. */
+    function flashProtected(el) {
+        el.classList.add('cms-protected-hold');
+        setTimeout(function () { el.classList.remove('cms-protected-hold'); }, 1400);
+        try {
+            parent.postMessage({ type: 'cms:notice', key: 'protected_hold' }, ORIGIN);
+        } catch (e) { /* no shell (standalone preview) — the outline is enough */ }
+    }
+
     function startEditing(el) {
         if (editing === el) return;
         stopEditing();
@@ -1437,6 +1447,21 @@
         }
         return true;
     }
+    // mirror of Annotator::containsProtected — the element holds something the
+    // editor must not destroy. text.set replaces innerHTML, so editing here
+    // would wipe an automatic block (a countdown, a date) and the loss would
+    // only show up on the next open. The server refuses such a save too.
+    function holdsProtected(el) {
+        var all = el.getElementsByTagName('*');
+        for (var i = 0; i < all.length; i++) {
+            var tag = all[i].tagName.toLowerCase();
+            if (all[i].getAttribute('data-cms-protected') === 'true') return true;
+            if (tag === 'script' || tag === 'style' || tag === 'link' || tag === 'meta'
+                || tag === 'title' || tag === 'base') return true;
+        }
+        return false;
+    }
+
     // editable descendants in document order (root excluded) — same set+order as
     // Annotator::editableDescendants, so client and server agree on clone ids
     function editableDescendantsClient(root) {
@@ -2181,7 +2206,12 @@
             e.preventDefault();
             if (el !== selected) select(el);
             // plugin blocks are edited through their form, never contenteditable
-            if (el.tagName !== 'IMG' && el.tagName !== 'HR' && !el.hasAttribute('data-cms-block')) startEditing(el);
+            if (el.tagName === 'IMG' || el.tagName === 'HR' || el.hasAttribute('data-cms-block')) return;
+            if (holdsProtected(el)) {
+                flashProtected(el);
+                return;
+            }
+            startEditing(el);
         }, true);
 
         document.addEventListener('mouseover', function (e) {

@@ -179,4 +179,76 @@ final class SaveServiceTest extends TestCase
         $this->expectException(OperationValidationException::class);
         $this->service()->save('page.html', $this->currentSha(), $ops);
     }
+
+    /* --- protected content survives an edit aimed at its container -------- */
+
+    private function seedProtectedPage(): void
+    {
+        file_put_contents(
+            $this->site . '/page.html',
+            '<!DOCTYPE html><html><head><title>t</title></head><body>'
+            . '<h2 data-cms-id="cms-bbbbbbbbbbbb">Акції '
+            . '<span data-cms-protected="true">вересня</span></h2>'
+            . '<p data-cms-id="cms-dddddddddddd">Two</p>'
+            . "</body></html>\n"
+        );
+    }
+
+    public function test_text_set_on_a_container_of_protected_content_is_refused(): void
+    {
+        $this->seedProtectedPage();
+        $result = $this->service()->save('page.html', $this->currentSha(), [
+            ['op' => 'text.set', 'target' => 'cms-bbbbbbbbbbbb', 'forward' => ['html' => 'Акції жовтня']],
+        ]);
+
+        $onDisk = (string) file_get_contents($this->site . '/page.html');
+        $this->assertSame(0, $result['applied']);
+        $this->assertStringContainsString('protected content', $result['warnings'][0] ?? '');
+        // the automatic month is still there, and the edit did not land
+        $this->assertStringContainsString('data-cms-protected="true">вересня', $onDisk);
+        $this->assertStringNotContainsString('жовтня', $onDisk);
+    }
+
+    public function test_node_delete_of_a_container_of_protected_content_is_refused(): void
+    {
+        $this->seedProtectedPage();
+        $result = $this->service()->save('page.html', $this->currentSha(), [
+            ['op' => 'node.delete', 'target' => 'cms-bbbbbbbbbbbb', 'forward' => []],
+        ]);
+
+        $this->assertSame(0, $result['applied']);
+        $this->assertStringContainsString(
+            'вересня',
+            (string) file_get_contents($this->site . '/page.html')
+        );
+    }
+
+    public function test_a_neighbour_stays_editable_next_to_protected_content(): void
+    {
+        $this->seedProtectedPage();
+        $result = $this->service()->save('page.html', $this->currentSha(), [
+            ['op' => 'text.set', 'target' => 'cms-dddddddddddd', 'forward' => ['html' => 'Правимо далі']],
+        ]);
+
+        $onDisk = (string) file_get_contents($this->site . '/page.html');
+        $this->assertSame(1, $result['applied']);
+        $this->assertSame([], $result['warnings']);
+        $this->assertStringContainsString('Правимо далі', $onDisk);
+        $this->assertStringContainsString('вересня', $onDisk);
+    }
+
+    public function test_refused_op_does_not_block_the_rest_of_the_batch(): void
+    {
+        $this->seedProtectedPage();
+        $result = $this->service()->save('page.html', $this->currentSha(), [
+            ['op' => 'text.set', 'target' => 'cms-bbbbbbbbbbbb', 'forward' => ['html' => 'Акції жовтня']],
+            ['op' => 'text.set', 'target' => 'cms-dddddddddddd', 'forward' => ['html' => 'Два']],
+        ]);
+
+        $onDisk = (string) file_get_contents($this->site . '/page.html');
+        $this->assertSame(1, $result['applied']);
+        $this->assertCount(1, $result['warnings']);
+        $this->assertStringContainsString('Два', $onDisk);
+        $this->assertStringContainsString('вересня', $onDisk);
+    }
 }

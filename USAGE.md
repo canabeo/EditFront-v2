@@ -89,6 +89,28 @@ to the `.htaccess` in your **site root** (not the CMS folder):
 Fonts are public files, so allowing any origin to read them changes nothing
 about who can see them.
 
+## Marking up a page for the editor
+
+One attribute you can put in your own HTML changes how EditFront treats a part
+of the page. It is optional; a page without it works exactly as before.
+
+### `data-cms-protected="true"` — this part is not yours to edit
+
+Put it on anything a script keeps up to date: a countdown, a date that renews
+itself, a price pulled from elsewhere. The editor will not select it, will not
+let you type in it, and the server refuses any save that would remove it —
+including a save aimed at the box **around** it, which used to wipe such content
+silently.
+
+Because the protection covers the whole box you edit, keep the automatic part in
+its own element and the words around it in another, so the rest stays editable:
+
+```html
+<h2><em>Sale of <span data-cms-protected="true">September</span></em><span>: four reasons to order now</span></h2>
+```
+
+Here the tail after the colon is editable; the month is not.
+
 ## Plugins
 
 Custom block types live in `plugins/<slug>/`. Drop a plugin folder in, and its

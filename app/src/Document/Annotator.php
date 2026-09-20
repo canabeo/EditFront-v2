@@ -126,6 +126,60 @@ final class Annotator
         return $node instanceof \DOMElement ? $node : null;
     }
 
+    /**
+     * Does this element hold something the editor must never destroy?
+     * True when a STRICT descendant is protected — either by data-cms-protected
+     * or by being a protected tag (a <script> inside an editable box is lost
+     * just as silently as a protected subtree).
+     *
+     * Why it matters: text.set replaces innerHTML, so editing an ANCESTOR of a
+     * protected node wipes the node — the edit looked like it worked and the
+     * content quietly vanished on the next open. Protection that only guards
+     * the node itself is not protection (alum.e-f.work, 20.09.2026).
+     */
+    public function containsProtected(\DOMElement $el): bool
+    {
+        foreach ($el->getElementsByTagName('*') as $child) {
+            if (!$child instanceof \DOMElement) {
+                continue;
+            }
+            if (
+                $child->getAttribute(self::PROTECTED_ATTR) === 'true'
+                || in_array(strtolower($child->tagName), self::PROTECTED_TAGS, true)
+            ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * How many protected nodes live under <body>. The save pipeline compares
+     * this before and after a batch: a drop means some operation destroyed
+     * protected content, and the whole save is refused (fail-closed backstop
+     * that needs no per-operation opt-in, so a future op cannot slip past it).
+     */
+    public function countProtected(\DOMDocument $doc): int
+    {
+        $body = $doc->getElementsByTagName('body')->item(0);
+        if (!$body instanceof \DOMElement) {
+            return 0;
+        }
+        $n = 0;
+        foreach ($body->getElementsByTagName('*') as $el) {
+            if (
+                $el instanceof \DOMElement
+                && (
+                    $el->getAttribute(self::PROTECTED_ATTR) === 'true'
+                    || in_array(strtolower($el->tagName), self::PROTECTED_TAGS, true)
+                )
+            ) {
+                $n++;
+            }
+        }
+        return $n;
+    }
+
     /** @return array<string, true> all ids present in the document */
     public function collectIds(\DOMDocument $doc): array
     {

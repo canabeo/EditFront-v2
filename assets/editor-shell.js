@@ -434,6 +434,9 @@
                     chipEl.hidden = true;
                 }
                 break;
+            case 'cms:notice':
+                setStatus(t('editor.' + String(d.key || 'notice')), 'error', 6000);
+                break;
             case 'cms:hotkey':
                 if (d.key === 'save') doSave(false);
                 if (d.key === 'undo') undo();

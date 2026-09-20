@@ -98,4 +98,51 @@ final class AnnotatorTest extends TestCase
         $this->assertTrue($this->annotator->isEditable($free));
         $this->assertFalse($this->annotator->isEditable($body));
     }
+
+    /* --- protection must hold against the ancestor, not just the node ------ */
+
+    public function test_contains_protected_sees_marked_descendant(): void
+    {
+        $doc = ef2_doc('<div id="holder"><p>text <span data-cms-protected="true">auto</span></p></div>');
+        $holder = $doc->getElementById('holder');
+        $this->assertInstanceOf(\DOMElement::class, $holder);
+        $this->assertTrue($this->annotator->containsProtected($holder));
+
+        $p = $doc->getElementsByTagName('p')->item(0);
+        $this->assertInstanceOf(\DOMElement::class, $p);
+        $this->assertTrue($this->annotator->containsProtected($p));
+    }
+
+    public function test_contains_protected_sees_protected_tag(): void
+    {
+        $doc = ef2_doc('<div id="holder"><p>x</p><script>var a = 1;</script></div>');
+        $holder = $doc->getElementById('holder');
+        $this->assertInstanceOf(\DOMElement::class, $holder);
+        $this->assertTrue($this->annotator->containsProtected($holder));
+    }
+
+    public function test_contains_protected_is_false_for_the_protected_node_itself(): void
+    {
+        $doc = ef2_doc('<div data-cms-protected="true" id="auto">12:00:00</div><p id="free">y</p>');
+        $auto = $doc->getElementById('auto');
+        $free = $doc->getElementById('free');
+        $this->assertInstanceOf(\DOMElement::class, $auto);
+        $this->assertInstanceOf(\DOMElement::class, $free);
+        // it IS protected, but it holds nothing protected — a text edit of the
+        // node is refused by isEditable(), not by this check
+        $this->assertFalse($this->annotator->containsProtected($auto));
+        $this->assertFalse($this->annotator->isEditable($auto));
+        $this->assertFalse($this->annotator->containsProtected($free));
+    }
+
+    public function test_count_protected_counts_body_only(): void
+    {
+        $doc = ef2_doc(
+            '<div data-cms-protected="true">a</div>'
+            . '<p><span data-cms-protected="true">b</span></p>'
+            . '<script>x</script>'
+        );
+        // two marked nodes + one script in <body>; <title> in <head> is not counted
+        $this->assertSame(3, $this->annotator->countProtected($doc));
+    }
 }

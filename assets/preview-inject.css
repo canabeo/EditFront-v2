@@ -17,6 +17,28 @@
   outline-offset: 2px !important;
 }
 
+/* Automatic content (a countdown, a self-renewing date): never editable, and
+   visibly so — a dashed amber frame while the editor is open. */
+[data-cms-protected="true"] {
+  outline: 1px dashed rgba(217, 119, 6, 0.55) !important;
+  outline-offset: 1px !important;
+  cursor: not-allowed !important;
+}
+
+/* double-clicked a box that HOLDS automatic content: say no, briefly and clearly */
+.cms-protected-hold {
+  outline: 2px solid #d97706 !important;
+  outline-offset: 2px !important;
+  animation: cms-protected-pulse 1.4s ease-out !important;
+}
+@keyframes cms-protected-pulse {
+  0%, 60% { background-color: rgba(217, 119, 6, 0.12); }
+  100% { background-color: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cms-protected-hold { animation: none !important; }
+}
+
 .cms-editing {
   outline: 2px solid #059669 !important;
   outline-offset: 2px !important;
