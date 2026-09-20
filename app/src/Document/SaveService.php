@@ -51,6 +51,7 @@ final class SaveService
         private readonly PropsStore $props,
         private readonly StateCssRenderer $stateCss,
         private readonly FontFaceRenderer $fontFaces,
+        private readonly FaqSchemaRenderer $faqSchema,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -170,6 +171,10 @@ final class SaveService
 
         // 4c. (re)render the @font-face block for self-hosted fonts into <head>
         $this->fontFaces->apply($doc);
+
+        // 4d. rebuild the FAQ rich-result graph from the questions a reader sees,
+        // so an edited wording cannot leave the search snippet showing the old one
+        $this->faqSchema->apply($doc);
 
         // 5. canonical serialize + atomic write
         $html = $this->html5->serialize($doc);

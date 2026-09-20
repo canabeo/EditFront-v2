@@ -54,6 +54,7 @@ final class SaveServiceTest extends TestCase
             ef2_props_store($config),
             new \EditFront\Document\StateCssRenderer(new \EditFront\Security\SanitizerCss()),
             new \EditFront\Document\FontFaceRenderer(new \EditFront\Font\FontService($config, new \EditFront\Http\UrlHelper($config))),
+            new \EditFront\Document\FaqSchemaRenderer(new NullLogger()),
             new NullLogger()
         );
     }

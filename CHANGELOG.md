@@ -5,6 +5,14 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **FAQ rich-result sync** (`FaqSchemaRenderer`): mark the list with
+  `data-cms-faq` and the `FAQPage` JSON-LD is rebuilt from the visible questions
+  on every save. Editing a question in the browser used to leave the structured
+  data — and so the search snippet — showing the old wording for months.
+  Only `mainEntity` of the FAQPage node is touched; an unchanged list rewrites
+  nothing, so saves do not churn the JSON.
+
 ### Fixed
 - **Protection now holds against the container, not just the node.**
   `data-cms-protected` stopped the editor from targeting the node itself, but

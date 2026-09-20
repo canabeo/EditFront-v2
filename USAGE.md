@@ -91,8 +91,8 @@ about who can see them.
 
 ## Marking up a page for the editor
 
-One attribute you can put in your own HTML changes how EditFront treats a part
-of the page. It is optional; a page without it works exactly as before.
+Two attributes you can put in your own HTML change how EditFront treats a part
+of the page. Both are optional; a page without them works exactly as before.
 
 ### `data-cms-protected="true"` — this part is not yours to edit
 
@@ -110,6 +110,26 @@ its own element and the words around it in another, so the rest stays editable:
 ```
 
 Here the tail after the colon is editable; the month is not.
+
+### `data-cms-faq` — keep the FAQ rich result honest
+
+Put it on the container of your FAQ list. On every save EditFront rebuilds the
+`FAQPage` JSON-LD from what a reader actually sees, so an edited question can
+never leave the search snippet showing the old wording.
+
+Each **direct child** of the container is one question: its first heading is the
+question and the rest of its text is the answer. If the question is not a
+heading, mark it with `data-cms-faq-q`.
+
+```html
+<div class="faq" data-cms-faq>
+  <div><h3>How long is the warranty?</h3><p>Ten years.</p></div>
+  <div><h3>Do you deliver?</h3><p>Yes, and we install on site.</p></div>
+</div>
+```
+
+Only `mainEntity` of the `FAQPage` node is rewritten — the rest of your graph is
+left alone, and a list you did not change rewrites nothing.
 
 ## Plugins
 
