@@ -21,9 +21,6 @@ final class CsrfMiddleware implements MiddlewareInterface
 {
     private const WRITE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
-    /** Anonymous public POST endpoints exempt from CSRF (see process()). */
-    private const PUBLIC_PATHS = ['/api/reviews/submit'];
-
     /** A plugin module endpoint: {base}/api/p/{slug}/{action} — see process(). */
     private const MODULE_PATH_RE = '#/api/p/([a-z][a-z0-9-]{1,39})/([a-z][a-z0-9-]{0,39})$#';
 
@@ -40,25 +37,17 @@ final class CsrfMiddleware implements MiddlewareInterface
             return $handler->handle($request);
         }
 
-        // Anonymous public endpoints that legitimately carry no CMS session/
-        // token (a site visitor submitting a review never loads a CMS page).
-        // Unprivileged (only enqueues a pending review); protected by a
-        // honeypot + per-IP rate-limit instead. Match by exact path suffix so
-        // basePath does not matter.
+        // The one exemption: a plugin module action its manifest marks public
+        // (§6.9). A form on the site's own pages carries no CMS session and no
+        // token — a visitor never loads a CMS page — so such an endpoint is
+        // guarded by a honeypot and a per-IP rate limit instead.
+        //
+        // The core keeps NO list of its own: the pattern below confines the
+        // exemption to /api/p/<slug>/<action>, so nothing a plugin declares can
+        // open a core path. An action not declared public — or one belonging to
+        // a disabled or degraded plugin — falls through to the token check and
+        // is refused like any other write.
         $path = $request->getUri()->getPath();
-        foreach (self::PUBLIC_PATHS as $suffix) {
-            if (str_ends_with($path, $suffix)) {
-                return $handler->handle($request);
-            }
-        }
-
-        // The same exemption for a plugin module that asked for it (§6.9): a
-        // form on the public site posts to /api/p/<slug>/<action> with no CMS
-        // session either. The plugin's own manifest decides, and the pattern
-        // confines that decision to its own namespace — nothing a plugin
-        // declares can exempt a core path. An action that is not declared
-        // public (or a plugin that is disabled or degraded) falls through to
-        // the token check below and is refused like any other write.
         if (preg_match(self::MODULE_PATH_RE, $path, $m) === 1
             && $this->plugins->moduleActionIsPublic($m[1], $m[2])
         ) {

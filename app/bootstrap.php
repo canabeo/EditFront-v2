@@ -26,8 +26,6 @@ use EditFront\Http\Controller\EditorController;
 use EditFront\Http\Controller\FontsController;
 use EditFront\Http\Controller\InstallController;
 use EditFront\Http\Controller\LoginController;
-use EditFront\Http\Controller\NewsController;
-use EditFront\Http\Controller\ReviewController;
 use EditFront\Http\Controller\PageController;
 use EditFront\Http\Controller\PluginModuleController;
 use EditFront\Http\Controller\PluginAdminController;
@@ -155,7 +153,6 @@ $app->post('/login', [LoginController::class, 'submit']);
 $app->get('/install', [InstallController::class, 'index']);
 $app->post('/install', [InstallController::class, 'submit']);
 $app->get('/sitemap.xml', [SitemapController::class, 'serve']);
-$app->post('/api/reviews/submit', [ReviewController::class, 'submit']);
 // Plugin modules (§6.9): two routes serve all of them. A module declares its
 // actions in plugin.json; the ones it marks public are reachable here without a
 // session, the rest answer 404 until the admin screen calls them from inside
@@ -185,18 +182,7 @@ $app->group('', function (RouteCollectorProxy $group): void {
     $group->get('/settings/fonts', [FontsController::class, 'page'])->setName('fonts');
     $group->post('/settings/fonts', [FontsController::class, 'upload']);
     $group->post('/settings/fonts/delete', [FontsController::class, 'delete']);
-    $group->get('/settings/news', [NewsController::class, 'page'])->setName('news');
-    $group->get('/api/news', [NewsController::class, 'list']);
-    $group->post('/api/news', [NewsController::class, 'save']);
-    $group->post('/api/news/delete', [NewsController::class, 'delete']);
     $group->get('/settings/p/{slug}', [PluginModuleController::class, 'page'])->setName('plugin-module');
-    $group->get('/settings/reviews', [ReviewController::class, 'page'])->setName('reviews');
-    $group->get('/api/reviews', [ReviewController::class, 'list']);
-    $group->post('/api/reviews', [ReviewController::class, 'save']);
-    $group->post('/api/reviews/approve', [ReviewController::class, 'approve']);
-    $group->post('/api/reviews/reject', [ReviewController::class, 'reject']);
-    $group->post('/api/reviews/unpublish', [ReviewController::class, 'unpublish']);
-    $group->post('/api/reviews/delete', [ReviewController::class, 'delete']);
     $group->get('/settings/translations', [TranslationsController::class, 'page'])->setName('translations');
     $group->post('/settings/translations', [TranslationsController::class, 'save']);
     $group->post('/settings/translations/add-language', [TranslationsController::class, 'addLanguage']);

@@ -5,6 +5,28 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Removed
+- **The reviews and the news engines left the core** and became plugins. Both
+  were written for one client's site, and every install was carrying them: ~3200
+  lines, two admin screens and 101 translation keys — a quarter of the built-in
+  dictionary, down to a Russian string reading "tourist reviews" that every site
+  received. A review's own shape gave it away: it carries a country and a year
+  of travel.
+
+  This is what the module capability below is for. Nothing else in the core
+  referenced either engine, so the move changed no behaviour — their endpoints
+  are now `/api/p/reviews/<action>` and `/api/p/news/<action>`, their data lives
+  in `storage/plugins/<slug>/`, and their admin screens appear in the dashboard
+  through the same mechanism as any other module.
+
+  **Upgrading a site that uses them:** install the two plugins before updating
+  the core, move `storage/reviews/` and `storage/news/` into
+  `storage/plugins/`, and repoint any public review form at the new URL.
+
+- With them went the core's hardcoded list of CSRF-exempt paths. A public
+  endpoint is now always a plugin action marked public in its own manifest, and
+  the exemption is confined to that plugin's namespace by construction.
+
 ### Added
 - **Plugin modules** — a plugin can now be a piece of the SITE, not only a kind
   of content on a page: its own endpoints, its own admin screen, its own private

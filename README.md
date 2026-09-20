@@ -51,15 +51,17 @@ leaves a half-written page.
 
 - **Per-page SEO** — title / description / canonical / robots with a live Google
   snippet, plus a noindex-aware `sitemap.xml` and `robots.txt`.
-- **News & reviews** — a visual news/blog engine and a review-moderation queue
-  (public submit → approve / edit / reject), both rendered to static HTML.
 - **Self-hosted fonts** — upload fonts or use bundled Cyrillic-ready presets,
   delivered via a managed `@font-face` block. No external font services.
 
 **Extend & operate**
 
-- **Plugins** — schema-driven custom block types in `plugins/<slug>/`; a plugin
-  that fails its round-trip checks loads read-only and never breaks the page.
+- **Plugins** — two kinds, both a folder in `plugins/<slug>/`. A *block type*
+  adds a kind of content to a page, schema-driven, edited through a generated
+  form; a plugin that fails its round-trip checks loads read-only and never
+  breaks the page. A *module* adds a piece of the site — its own endpoints, its
+  own admin screen, its own private storage — which is where per-site work goes
+  instead of into the core.
 - **i18n UI** — ships in English and Russian, with an in-app translation editor
   and the ability to add languages.
 - **Secure by default** — session + CSRF on all writes, rate-limited login with
