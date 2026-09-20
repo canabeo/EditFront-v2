@@ -133,10 +133,60 @@ left alone, and a list you did not change rewrites nothing.
 
 ## Plugins
 
-Custom block types live in `plugins/<slug>/`. Drop a plugin folder in, and its
-element type appears in the insert palette. A plugin that fails its
-correctness checks is loaded read-only and never breaks the page. Plugin PHP is
-trusted code (like a WordPress plugin) — only install plugins you trust.
+Everything that is not part of every EditFront install lives in
+`plugins/<slug>/`. Drop the folder in and it works; delete the folder and every
+trace of it goes with it. A plugin that fails its correctness checks is loaded
+read-only and never breaks the page. Plugin PHP is trusted code (like a
+WordPress plugin) — only install plugins you trust.
+
+A plugin can be two things, separately or together.
+
+**A block type.** A new kind of content you can insert and edit on a page. It
+appears in the insert palette; the core edits it through a form generated from
+its schema, so the plugin needs no editor code of its own.
+
+**A module.** A piece of the site rather than of a page: its own endpoints, its
+own screen in the admin, its own private storage. Contact forms, a booking box,
+an export job for one client — the work that differs from site to site.
+
+The core owns exactly two URLs for every module, so a plugin can never shadow a
+core path or reach outside its own corner:
+
+```
+POST {base}/api/p/{slug}/{action}
+GET  {base}/settings/p/{slug}
+```
+
+The manifest declares what exists:
+
+```json
+"module": {
+  "php":     "src/BookingModule.php",
+  "class":   "Acme\Booking\BookingModule",
+  "actions": ["submit", "list", "config"],
+  "public":  ["submit"],
+  "admin":   { "label_key": "booking.title", "order": 40 }
+}
+```
+
+`actions` is a whitelist — an action not listed has no route at all. `public`
+must be a subset of it, and means "reachable with no session and no CSRF token",
+which is how a form on your static pages posts to it. Every other action
+requires a signed-in admin, checked by the core, not by the plugin. An action
+listed as public is on its own: it must rate-limit itself and treat every field
+as hostile.
+
+The admin screen appears in the dashboard automatically; `label_key` is looked
+up in the plugin's own `lang/` files, which the core merges into its
+dictionaries with no wiring on your part.
+
+Storage is handed to the module as a directory of its own under
+`storage/plugins/<slug>/` — private, outside the web root, created on first use.
+A plugin never writes anywhere else.
+
+A module plugin declares no `kinds`, no `server` class and no `fixtures` — those
+belong to block types. Its tests live in `plugins/<slug>/tests/` and run with
+the rest of the suite.
 
 ## Security notes
 

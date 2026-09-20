@@ -5,6 +5,40 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 /**
+ * Plugin classes are not in composer's autoloader — at runtime PluginManager
+ * requires a plugin's entry file and that file requires its own siblings. The
+ * suite loads them the same way, driven by the same manifests, so a plugin
+ * whose requires are wrong fails here exactly as it would in production.
+ */
+spl_autoload_register(static function (string $class): void {
+    static $prefixes = null;
+    if ($prefixes === null) {
+        $prefixes = [];
+        foreach (glob(dirname(__DIR__) . '/plugins/*/plugin.json') ?: [] as $manifestPath) {
+            $raw = json_decode((string) file_get_contents($manifestPath), true);
+            if (!is_array($raw)) {
+                continue;
+            }
+            foreach ([$raw['module'] ?? null, $raw['server'] ?? null] as $entry) {
+                if (!is_array($entry) || !is_string($entry['class'] ?? null) || !is_string($entry['php'] ?? null)) {
+                    continue;
+                }
+                $ns = substr($entry['class'], 0, (int) strrpos($entry['class'], '\\'));
+                if ($ns !== '') {
+                    $prefixes[$ns . '\\'] = dirname($manifestPath) . '/' . $entry['php'];
+                }
+            }
+        }
+    }
+    foreach ($prefixes as $prefix => $entryFile) {
+        if (str_starts_with($class, $prefix) && is_file($entryFile)) {
+            require_once $entryFile;
+            return;
+        }
+    }
+});
+
+/**
  * Create an isolated temp dir tree for a test and return its path.
  * Каждый тест работает в своём корне — никаких следов в реальном siteRoot.
  */
@@ -182,6 +216,12 @@ function ef2_plugin_cms(array $sourceDirs): string
 function ef2_pricing_plugin_dir(): string
 {
     return dirname(__DIR__) . '/plugins/pricing-table';
+}
+
+/** Absolute path to the fixture module plugin (§6.9 module capability). */
+function ef2_module_plugin_dir(): string
+{
+    return __DIR__ . '/fixtures/plugins/demo-module';
 }
 
 /** Absolute path to the deliberately-broken test plugin. */

@@ -29,6 +29,7 @@ use EditFront\Http\Controller\LoginController;
 use EditFront\Http\Controller\NewsController;
 use EditFront\Http\Controller\ReviewController;
 use EditFront\Http\Controller\PageController;
+use EditFront\Http\Controller\PluginModuleController;
 use EditFront\Http\Controller\PluginAdminController;
 use EditFront\Http\Controller\PluginAssetController;
 use EditFront\Http\Controller\SeoController;
@@ -155,6 +156,11 @@ $app->get('/install', [InstallController::class, 'index']);
 $app->post('/install', [InstallController::class, 'submit']);
 $app->get('/sitemap.xml', [SitemapController::class, 'serve']);
 $app->post('/api/reviews/submit', [ReviewController::class, 'submit']);
+// Plugin modules (§6.9): two routes serve all of them. A module declares its
+// actions in plugin.json; the ones it marks public are reachable here without a
+// session, the rest answer 404 until the admin screen calls them from inside
+// the group below. Installing a module stays "copy the folder in".
+$app->post('/api/p/{slug}/{action}', [PluginModuleController::class, 'api']);
 
 // NB: route-group callback must not be static either — Slim binds it to the container
 $app->group('', function (RouteCollectorProxy $group): void {
@@ -183,6 +189,7 @@ $app->group('', function (RouteCollectorProxy $group): void {
     $group->get('/api/news', [NewsController::class, 'list']);
     $group->post('/api/news', [NewsController::class, 'save']);
     $group->post('/api/news/delete', [NewsController::class, 'delete']);
+    $group->get('/settings/p/{slug}', [PluginModuleController::class, 'page'])->setName('plugin-module');
     $group->get('/settings/reviews', [ReviewController::class, 'page'])->setName('reviews');
     $group->get('/api/reviews', [ReviewController::class, 'list']);
     $group->post('/api/reviews', [ReviewController::class, 'save']);

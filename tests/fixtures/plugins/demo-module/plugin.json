@@ -1,0 +1,16 @@
+{
+  "slug": "demo-module",
+  "name": { "en": "Demo module" },
+  "version": "1.0.0",
+  "api": "1",
+  "author": "local",
+  "trust": "local",
+
+  "module": {
+    "php": "src/DemoModule.php",
+    "class": "EditFront\\Tests\\Fixtures\\DemoModule",
+    "actions": ["submit", "list"],
+    "public": ["submit"],
+    "admin": { "label_key": "demo.title", "order": 40 }
+  }
+}

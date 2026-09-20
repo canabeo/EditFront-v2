@@ -10,3 +10,9 @@
 /lang/user/*.json
 !/lang/user/.gitkeep
 /graphify-out/
+
+# Per-site plugins stay out of the public repository: the core is the same
+# everywhere, the work that differs per client is not published. Only the
+# bundled reference plugin ships. Un-ignore a folder deliberately to publish one.
+/plugins/*
+!/plugins/pricing-table/

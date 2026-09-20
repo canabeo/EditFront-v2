@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace EditFront\Http\Controller;
 
 use EditFront\Auth\AuthService;
+use EditFront\Plugin\PluginManager;
 use EditFront\Storage\PagesIndex;
 use EditFront\Support\Config;
 use Psr\Http\Message\ResponseInterface;
@@ -18,6 +19,7 @@ final class DashboardController
         private readonly PagesIndex $pages,
         private readonly AuthService $auth,
         private readonly Config $config,
+        private readonly PluginManager $plugins,
     ) {
     }
 
@@ -27,6 +29,7 @@ final class DashboardController
             'pages' => $this->pages->list(),
             'user' => $this->auth->user(),
             'site_root' => $this->config->siteRoot(),
+            'module_pages' => $this->plugins->moduleAdminPages(),
         ]));
         return $response->withHeader('Content-Type', 'text/html; charset=utf-8');
     }

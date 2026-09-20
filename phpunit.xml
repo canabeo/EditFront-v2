@@ -12,6 +12,12 @@
         <testsuite name="unit">
             <directory>tests</directory>
         </testsuite>
+        <!-- A plugin ships its own tests next to its own code, so removing the
+             folder removes everything it brought. The core suite stays green
+             with plugins/ empty. -->
+        <testsuite name="plugins">
+            <directory>plugins/*/tests</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

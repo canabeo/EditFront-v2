@@ -29,6 +29,8 @@ final class PluginManager
     private array $opSpecs = [];
     /** @var array<string, PluginManifest> enabled plugins */
     private array $manifests = [];
+    /** @var array<string, PluginModule> slug → module of an enabled plugin (§6.9) */
+    private array $modules = [];
     /** @var array<string, array<string, mixed>> slug → status row (for UI + registry) */
     private array $statuses = [];
     /**
@@ -141,16 +143,22 @@ final class PluginManager
         // mark "attempting require"; if loadServerClass fatals on a parse error
         // (uncatchable), this marker survives and quarantines the version next boot
         $this->markAttempt($slug, $sig);
-        $blocks = $this->loadServerClass($manifest);
+        // a module-only plugin ships no BlockKind, and a kinds-only plugin ships
+        // no module — both requires happen inside the same attempt window so a
+        // parse error in either one quarantines this version, not the boot
+        $blocks = $manifest->serverClass === '' ? [] : $this->loadServerClass($manifest);
+        $module = $manifest->module === [] ? null : $this->loadModuleClass($manifest);
         $this->clearAttempt($slug);
 
         // gate verdict is cached by a content-hash signature (§6.6)
         $verified = ($prev !== null && ($prev['sig'] ?? null) === $sig && ($prev['status'] ?? '') === 'enabled');
         $reason = '';
-        if (!$verified) {
+        if (!$verified && $manifest->kinds !== []) {
             $gate = $this->runFixturesGate($manifest, $blocks, $pluginDir);
             $verified = $gate['ok'];
             $reason = $gate['reason'];
+        } elseif (!$verified) {
+            $verified = true; // module-only: no ops, nothing to round-trip
         }
 
         if (!$verified) {
@@ -172,7 +180,12 @@ final class PluginManager
             }
             $this->types->register(new RegisteredKind($slug, $manifest->trust, $mk, $block));
         }
-        $this->buildOps($slug);
+        if ($manifest->kinds !== []) {
+            $this->buildOps($slug);
+        }
+        if ($module !== null) {
+            $this->modules[$slug] = $module;
+        }
         $this->manifests[$slug] = $manifest;
 
         $this->record($slug, $registry, [
@@ -219,6 +232,102 @@ final class PluginManager
             throw new PluginException('server class is not a BlockKind: ' . $class);
         }
         return [$instance->kind() => $instance];
+    }
+
+    /**
+     * Load and instantiate a plugin's module class (§6.9) — same guards as the
+     * BlockKind path: the file must stay inside the plugin folder (no symlink
+     * escape) and an FQCN already declared by a different file is a collision,
+     * not a redeclare fatal.
+     */
+    private function loadModuleClass(PluginManifest $manifest): PluginModule
+    {
+        $php = $manifest->dir . '/' . $manifest->module['php'];
+        $real = realpath($php);
+        $dirReal = realpath($manifest->dir);
+        if ($real === false || $dirReal === false || !str_starts_with($real, $dirReal . '/')) {
+            throw new PluginException('module php outside plugin dir');
+        }
+        $class = $manifest->module['class'];
+        if (class_exists($class, false)) {
+            if ((self::$loadedClasses[$class] ?? null) !== $real) {
+                throw new PluginException('module class already declared elsewhere (collision): ' . $class);
+            }
+        } else {
+            require_once $real;
+            if (!class_exists($class)) {
+                throw new PluginException('module class not found: ' . $class);
+            }
+            self::$loadedClasses[$class] = $real;
+        }
+        $instance = new $class();
+        if (!$instance instanceof PluginModule) {
+            throw new PluginException('module class is not a PluginModule: ' . $class);
+        }
+        return $instance;
+    }
+
+    /**
+     * The module of an ENABLED plugin, or null. A degraded or disabled plugin
+     * has no module here, so its routes answer 404 — the same "degrade, never
+     * half-run" rule the kinds follow (§6.6).
+     */
+    public function module(string $slug): ?PluginModule
+    {
+        $this->boot();
+        return $this->modules[$slug] ?? null;
+    }
+
+    /** @return array<string, PluginManifest> slug → manifest, enabled modules only */
+    public function moduleManifests(): array
+    {
+        $this->boot();
+        return array_intersect_key($this->manifests, $this->modules);
+    }
+
+    /** Is $action declared by this module, and is it reachable without a session? */
+    public function moduleActionIsPublic(string $slug, string $action): bool
+    {
+        $this->boot();
+        $manifest = $this->manifests[$slug] ?? null;
+        if ($manifest === null || !isset($this->modules[$slug])) {
+            return false;
+        }
+        return in_array($action, $manifest->module['public'] ?? [], true);
+    }
+
+    /** Is $action declared at all? An undeclared action has no route (404). */
+    public function moduleHasAction(string $slug, string $action): bool
+    {
+        $this->boot();
+        $manifest = $this->manifests[$slug] ?? null;
+        if ($manifest === null || !isset($this->modules[$slug])) {
+            return false;
+        }
+        return in_array($action, $manifest->module['actions'] ?? [], true);
+    }
+
+    /**
+     * Admin screens contributed by modules, for the dashboard nav.
+     * @return list<array{slug: string, label_key: string, name: string, order: int}>
+     */
+    public function moduleAdminPages(): array
+    {
+        $out = [];
+        foreach ($this->moduleManifests() as $slug => $manifest) {
+            $admin = $manifest->module['admin'] ?? [];
+            if ($admin === []) {
+                continue;
+            }
+            $out[] = [
+                'slug' => $slug,
+                'label_key' => (string) ($admin['label_key'] ?? ''),
+                'name' => $manifest->names['en'] ?? $slug,
+                'order' => (int) ($admin['order'] ?? 100),
+            ];
+        }
+        usort($out, static fn (array $a, array $b): int => $a['order'] <=> $b['order']);
+        return $out;
     }
 
     private function buildOps(string $slug): void
@@ -522,11 +631,15 @@ final class PluginManager
     {
         // content hash, not mtime: a restore / cp -p / touch can change the bytes
         // while preserving mtime, which would let a now-broken plugin skip the gate.
-        $parts = [
-            (string) @hash_file('sha256', $dir . '/plugin.json'),
-            (string) @hash_file('sha256', $dir . '/' . $manifest->fixtures),
-            (string) @hash_file('sha256', $dir . '/' . $manifest->serverPhp),
-        ];
+        $parts = [(string) @hash_file('sha256', $dir . '/plugin.json')];
+        // a module-only plugin has no fixtures and no BlockKind file; a
+        // kinds-only plugin has no module file. Hash whatever it actually ships,
+        // so the signature still changes when any of its code changes.
+        foreach ([$manifest->fixtures, $manifest->serverPhp, $manifest->module['php'] ?? ''] as $rel) {
+            if ($rel !== '') {
+                $parts[] = (string) @hash_file('sha256', $dir . '/' . $rel);
+            }
+        }
         return substr(hash('sha256', implode('|', $parts) . '|' . self::CORE_API), 0, 24);
     }
 

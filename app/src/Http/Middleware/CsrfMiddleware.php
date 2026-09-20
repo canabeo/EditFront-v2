@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace EditFront\Http\Middleware;
 
 use EditFront\Http\UrlHelper;
+use EditFront\Plugin\PluginManager;
 use EditFront\Security\Csrf;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -23,9 +24,13 @@ final class CsrfMiddleware implements MiddlewareInterface
     /** Anonymous public POST endpoints exempt from CSRF (see process()). */
     private const PUBLIC_PATHS = ['/api/reviews/submit'];
 
+    /** A plugin module endpoint: {base}/api/p/{slug}/{action} — see process(). */
+    private const MODULE_PATH_RE = '#/api/p/([a-z][a-z0-9-]{1,39})/([a-z][a-z0-9-]{0,39})$#';
+
     public function __construct(
         private readonly Csrf $csrf,
         private readonly UrlHelper $url,
+        private readonly PluginManager $plugins,
     ) {
     }
 
@@ -45,6 +50,19 @@ final class CsrfMiddleware implements MiddlewareInterface
             if (str_ends_with($path, $suffix)) {
                 return $handler->handle($request);
             }
+        }
+
+        // The same exemption for a plugin module that asked for it (§6.9): a
+        // form on the public site posts to /api/p/<slug>/<action> with no CMS
+        // session either. The plugin's own manifest decides, and the pattern
+        // confines that decision to its own namespace — nothing a plugin
+        // declares can exempt a core path. An action that is not declared
+        // public (or a plugin that is disabled or degraded) falls through to
+        // the token check below and is refused like any other write.
+        if (preg_match(self::MODULE_PATH_RE, $path, $m) === 1
+            && $this->plugins->moduleActionIsPublic($m[1], $m[2])
+        ) {
+            return $handler->handle($request);
         }
 
         $body = $request->getParsedBody();

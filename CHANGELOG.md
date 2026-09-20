@@ -6,6 +6,17 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Plugin modules** — a plugin can now be a piece of the SITE, not only a kind
+  of content on a page: its own endpoints, its own admin screen, its own private
+  storage under `storage/plugins/<slug>/`. This is where per-site work belongs,
+  so the core stays identical on every install.
+
+  The core owns two routes for all modules — `POST {base}/api/p/{slug}/{action}`
+  and `GET {base}/settings/p/{slug}` — so a plugin can neither shadow a core
+  path nor exempt one from CSRF. The manifest whitelists `actions`; an action
+  not listed has no route, and one not listed under `public` requires a signed-in
+  admin, enforced by the core. A module plugin declares no kinds, no server class
+  and no fixtures, and its tests live beside its code in `plugins/<slug>/tests/`.
 - **FAQ rich-result sync** (`FaqSchemaRenderer`): mark the list with
   `data-cms-faq` and the `FAQPage` JSON-LD is rebuilt from the visible questions
   on every save. Editing a question in the browser used to leave the structured
