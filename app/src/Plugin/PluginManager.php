@@ -217,7 +217,7 @@ final class PluginManager
         // a require_once would fatal with "cannot redeclare class" (uncatchable).
         // Degrade this plugin instead of crashing the whole boot.
         if (class_exists($class, false)) {
-            if ((self::$loadedClasses[$class] ?? null) !== $real) {
+            if (!$this->declaredIn($class, $real)) {
                 throw new PluginException('server class already declared elsewhere (collision): ' . $class);
             }
         } else {
@@ -250,7 +250,7 @@ final class PluginManager
         }
         $class = $manifest->module['class'];
         if (class_exists($class, false)) {
-            if ((self::$loadedClasses[$class] ?? null) !== $real) {
+            if (!$this->declaredIn($class, $real)) {
                 throw new PluginException('module class already declared elsewhere (collision): ' . $class);
             }
         } else {
@@ -265,6 +265,37 @@ final class PluginManager
             throw new PluginException('module class is not a PluginModule: ' . $class);
         }
         return $instance;
+    }
+
+    /**
+     * Is this already-declared class the one that lives in $file?
+     *
+     * A plugin's FQCN may already be declared for a legitimate reason — another
+     * loader got there first — and only a DIFFERENT file claiming the same name
+     * is a real collision. The bookkeeping map alone could not tell the two
+     * apart: it knew only about classes this class had required itself, so a
+     * plugin whose file some other autoloader had already pulled in was degraded
+     * as a collision. Ask PHP where the class actually came from.
+     */
+    private function declaredIn(string $class, string $file): bool
+    {
+        if ((self::$loadedClasses[$class] ?? null) === $file) {
+            return true;
+        }
+        try {
+            $declared = (new \ReflectionClass($class))->getFileName();
+        } catch (\ReflectionException) {
+            return false;
+        }
+        if ($declared === false) {
+            return false; // internal / eval'd class under this name — not ours
+        }
+        $real = realpath($declared);
+        if ($real !== false && $real === $file) {
+            self::$loadedClasses[$class] = $file;
+            return true;
+        }
+        return false;
     }
 
     /**
