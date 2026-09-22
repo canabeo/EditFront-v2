@@ -5,6 +5,28 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **The picker's gallery can list the site's own pictures,** not only CMS uploads.
+  Set `GALLERY_DIRS` (comma-separated folders relative to the site root, e.g.
+  `assets/img`) and the Gallery tab shows them after the uploads, under their own
+  heading, with a name filter once the list is long. Responsive copies
+  (`hero-400.webp`, `hero-1280.webp` next to `hero.webp`) fold into their original
+  and the smallest sharp copy becomes the tile, so the grid does not download
+  full-size photos. Folders outside the site root, inside the CMS or pointing at
+  the uploads folder are ignored. Empty by default — existing installs are
+  unchanged.
+
+### Fixed
+- **Replacing a responsive picture changed nothing on screen.** The picker set
+  only `src`, while the browser renders from `srcset` when it is present, so the
+  old photo stayed. Replacing now also drops `srcset` and `sizes`, updates
+  `width`/`height` to the new picture's natural size (so the box keeps the right
+  ratio) and, when the picture sits in a lightbox wrapper holding only it, the
+  wrapper's `data-full` link. `srcset` is removed rather than rewritten:
+  `attr.set` keeps refusing it (a URL list), `attr.remove` is enough. The `src`
+  command goes last, so the first Undo already shows the old picture again.
+  Uploads now report their natural `w`/`h` for this.
+
 ### Removed
 - **The reviews and the news engines left the core** and became plugins. Both
   were written for one client's site, and every install was carrying them: ~3200

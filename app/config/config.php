@@ -36,6 +36,13 @@ return [
     'backup_retention' => max(1, (int) ($env('BACKUP_RETENTION', '20') ?? 20)),
     // §4.9 image upload cap (bytes); default 10 MB
     'upload_max_bytes' => max(1, (int) ($env('UPLOAD_MAX_BYTES', '10485760') ?? 10485760)),
+    // The picker's gallery also lists the site's own pictures from these folders
+    // (relative to the site root, comma-separated, e.g. "assets/img"), not only CMS
+    // uploads. Empty = uploads only — the behaviour every existing install keeps.
+    'gallery_dirs' => array_values(array_filter(array_map(
+        static fn (string $d): string => trim($d, " /\t"),
+        explode(',', (string) ($env('GALLERY_DIRS', '') ?? ''))
+    ), static fn (string $d): bool => $d !== '')),
     // sitemap.xml origin; empty → derived from the request (§9 C5)
     'site_base_url' => rtrim($env('SITE_BASE_URL', '') ?? '', '/'),
 ];

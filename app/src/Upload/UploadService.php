@@ -45,6 +45,10 @@ final class UploadService
 
     private const LIST_EXT = ['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif', 'svg'];
     private const MAX_LIST = 500;
+    /** the site's own pictures (gallery_dirs) — cap so a huge media folder stays usable */
+    private const MAX_SITE_LIST = 2000;
+    /** smallest responsive copy width that still looks sharp as a gallery tile */
+    private const THUMB_MIN = 300;
 
     public function __construct(
         private readonly Config $config,
@@ -109,6 +113,8 @@ final class UploadService
             $this->storage->atomicWrite($rel, $content);
         }
 
+        [$w, $h] = $this->dimensions($content);
+
         return [
             'url' => $this->url->siteUrl($rel),
             'hash' => $hash,
@@ -116,11 +122,25 @@ final class UploadService
             'ext' => $ext,
             'size' => strlen($content),
             'mime' => $mime,
+            'w' => $w,
+            'h' => $h,
         ];
     }
 
-    /** @return list<array{url: string, name: string, size: int, mtime: int}> newest first */
+    /**
+     * The picker's gallery: CMS uploads (newest first) followed by the site's own
+     * pictures from `gallery_dirs` (alphabetical). Every entry carries `source`
+     * ('upload' | 'site') so the editor can group them.
+     *
+     * @return list<array<string, mixed>>
+     */
     public function list(): array
+    {
+        return array_merge($this->listUploads(), $this->listSiteImages());
+    }
+
+    /** @return list<array{url: string, name: string, size: int, mtime: int, source: string}> newest first */
+    private function listUploads(): array
     {
         $dir = $this->absDir();
         if (!is_dir($dir)) {
@@ -141,10 +161,123 @@ final class UploadService
                 'name' => $name,
                 'size' => (int) @filesize($path),
                 'mtime' => (int) @filemtime($path),
+                'source' => 'upload',
             ];
         }
         usort($out, static fn (array $a, array $b): int => $b['mtime'] <=> $a['mtime']);
         return array_slice($out, 0, self::MAX_LIST);
+    }
+
+    /**
+     * Pictures the site already has, from the folders named in `gallery_dirs`.
+     *
+     * Static sites keep responsive copies next to the original (`hero.webp`,
+     * `hero-800.webp`, `hero-1280.webp`). Listing every copy would bury the
+     * gallery, so a file named `<base>-<width>.<ext>` is folded into `<base>.<ext>`
+     * when that original exists; the smallest copy of at least THUMB_MIN px becomes
+     * the thumbnail, so the grid does not download full-size photos. A `-<number>`
+     * file without an original next to it is an ordinary picture and is listed.
+     *
+     * Folders must resolve inside the site root and never into the CMS itself or
+     * the uploads folder (already listed above); anything else is skipped silently.
+     *
+     * @return list<array<string, mixed>> alphabetical
+     */
+    private function listSiteImages(): array
+    {
+        $dirs = $this->config->get('gallery_dirs', []);
+        if (!is_array($dirs) || $dirs === []) {
+            return [];
+        }
+        $root = realpath($this->config->siteRoot());
+        if ($root === false) {
+            return [];
+        }
+        $cms = realpath($this->config->cmsDir());
+        $uploads = realpath($this->absDir());
+
+        $out = [];
+        $seen = [];
+        foreach ($dirs as $rel) {
+            $rel = trim((string) $rel, '/');
+            $abs = realpath($root . '/' . $rel);
+            if (
+                $abs === false || !is_dir($abs)
+                || !str_starts_with($abs . '/', $root . '/')
+                || ($cms !== false && str_starts_with($abs . '/', $cms . '/'))
+                || ($uploads !== false && $abs === $uploads)
+                || isset($seen[$abs])
+            ) {
+                continue;
+            }
+            $seen[$abs] = true;
+            $relDir = trim(substr($abs, strlen($root)), '/');
+
+            $names = [];
+            foreach (glob($abs . '/*') ?: [] as $path) {
+                $name = basename($path);
+                $ext = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
+                if (is_file($path) && in_array($ext, self::LIST_EXT, true)) {
+                    $names[$name] = $path;
+                }
+            }
+
+            // fold responsive copies into their original
+            $copies = [];
+            foreach (array_keys($names) as $name) {
+                if (preg_match('/^(.+)-(\d{2,4})w?\.([a-z0-9]+)$/i', $name, $m) === 1) {
+                    $original = $m[1] . '.' . $m[3];
+                    if (isset($names[$original])) {
+                        $copies[$original][(int) $m[2]] = $name;
+                        unset($names[$name]);
+                    }
+                }
+            }
+
+            foreach ($names as $name => $path) {
+                $thumb = $name;
+                if (isset($copies[$name])) {
+                    ksort($copies[$name]);
+                    foreach ($copies[$name] as $width => $copy) {
+                        $thumb = $copy;
+                        if ($width >= self::THUMB_MIN) {
+                            break;
+                        }
+                    }
+                }
+                [$w, $h] = $this->fileDimensions($path);
+                $out[] = [
+                    'url' => $this->url->siteUrl($relDir . '/' . $name),
+                    'thumb' => $this->url->siteUrl($relDir . '/' . $thumb),
+                    'name' => $name,
+                    'size' => (int) @filesize($path),
+                    'mtime' => (int) @filemtime($path),
+                    'w' => $w,
+                    'h' => $h,
+                    'source' => 'site',
+                ];
+                if (count($out) >= self::MAX_SITE_LIST) {
+                    break 2;
+                }
+            }
+        }
+
+        usort($out, static fn (array $a, array $b): int => strnatcasecmp((string) $a['name'], (string) $b['name']));
+        return $out;
+    }
+
+    /** @return array{0: int, 1: int} width/height of raster bytes; 0/0 for SVG or unreadable */
+    private function dimensions(string $content): array
+    {
+        $info = @getimagesizefromstring($content);
+        return is_array($info) ? [(int) $info[0], (int) $info[1]] : [0, 0];
+    }
+
+    /** @return array{0: int, 1: int} */
+    private function fileDimensions(string $path): array
+    {
+        $info = @getimagesize($path);
+        return is_array($info) ? [(int) $info[0], (int) $info[1]] : [0, 0];
     }
 
     public function maxBytes(): int

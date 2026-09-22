@@ -538,10 +538,10 @@
             status.textContent = text || '';
             status.className = 'cms-imgpick-status' + (kind ? ' is-' + kind : '');
         }
-        function pick(url) {
+        function pick(url, meta) {
             closeImagePicker();
             if (typeof onPick === 'function') onPick(multi ? [url] : url);
-            else setAttrValue(el, 'src', url);
+            else replaceImage(el, url, meta || {});
         }
         // multi mode: hand the whole selection over at once
         function pickMany(urls) {
@@ -608,16 +608,17 @@
         drop.appendChild(input);
         host.appendChild(drop);
 
+        // resolves with the whole upload answer: url plus the natural w/h
         function uploadOne(file) {
             return proxy('upload', { file: file }).then(function (res) {
-                if (res.status === 200 && res.data.ok) return res.data.url;
+                if (res.status === 200 && res.data.ok) return res.data;
                 throw new Error(res.data.error || ('HTTP ' + res.status));
             });
         }
         function handle(file) {
             if (!file) return;
             setStatus(t('image.uploading'), '');
-            uploadOne(file).then(function (url) { pick(url); })
+            uploadOne(file).then(function (meta) { pick(meta.url, meta); })
                 .catch(function (err) { setStatus(String(err && err.message || err), 'error'); });
         }
         // multi: upload in order, keep going past a failure, hand over what landed
@@ -633,7 +634,7 @@
                     return;
                 }
                 setStatus(t('image.uploading') + ' ' + (i + 1) + ' / ' + list.length, '');
-                uploadOne(list[i++]).then(function (u) { urls.push(u); }, function () { failed++; }).then(next);
+                uploadOne(list[i++]).then(function (m) { urls.push(m.url); }, function () { failed++; }).then(next);
             }
             next();
         }
@@ -686,16 +687,47 @@
                 setStatus('');
                 var images = (d && d.images) || [];
                 if (!images.length) { setStatus(t('image.gallery_empty'), ''); return; }
-                images.forEach(function (img) {
+                var uploads = images.filter(function (i) { return i.source !== 'site'; });
+                var site = images.filter(function (i) { return i.source === 'site'; });
+                var cells = [];   // {cell, name, head} — for the name filter
+                // a long list gets a name filter: a site can hold hundreds of pictures
+                if (images.length > 24) {
+                    var search = document.createElement('input');
+                    search.type = 'search';
+                    search.className = 'cms-imgpick-search';
+                    search.placeholder = t('image.gallery_search', null, 'Найти по имени файла');
+                    search.setAttribute('aria-label', search.placeholder);
+                    search.addEventListener('input', function () {
+                        var q = search.value.trim().toLowerCase();
+                        var visible = {};
+                        cells.forEach(function (c) {
+                            var on = !q || c.name.indexOf(q) !== -1;
+                            c.cell.hidden = !on;
+                            if (on) visible[c.head] = true;
+                        });
+                        heads.forEach(function (h) { h.el.hidden = !visible[h.key]; });
+                    });
+                    host.insertBefore(search, grid);
+                }
+                var heads = [];
+                function head(key, label) {
+                    var h = document.createElement('p');
+                    h.className = 'cms-imgpick-group';
+                    h.textContent = label;
+                    grid.appendChild(h);
+                    heads.push({ key: key, el: h });
+                }
+                function addCell(img, key) {
                     var cell = document.createElement('button');
                     cell.type = 'button';
                     cell.className = 'cms-imgpick-cell';
                     cell.title = img.name;
                     var thumb = document.createElement('img');
-                    thumb.src = img.url;
+                    thumb.src = img.thumb || img.url;
                     thumb.alt = img.name;
                     thumb.loading = 'lazy';
                     cell.appendChild(thumb);
+                    cells.push({ cell: cell, name: String(img.name || '').toLowerCase(), head: key });
                     if (pickMany) {
                         var mark = document.createElement('span');
                         mark.className = 'cms-imgpick-check';
@@ -708,10 +740,14 @@
                             refreshFooter();
                         });
                     } else {
-                        cell.addEventListener('click', function () { pick(img.url); });
+                        cell.addEventListener('click', function () { pick(img.url, img); });
                     }
                     grid.appendChild(cell);
-                });
+                }
+                if (uploads.length && site.length) head('upload', t('image.gallery_uploads', null, 'Загруженные'));
+                uploads.forEach(function (img) { addCell(img, 'upload'); });
+                if (site.length) head('site', t('image.gallery_site', null, 'Картинки сайта'));
+                site.forEach(function (img) { addCell(img, 'site'); });
             })
             .catch(function (err) { setStatus(String(err && err.message || err), 'error'); });
     }
@@ -1399,6 +1435,35 @@
             }
         });
         style.textContent = rules.join('\n');
+    }
+
+    function removeAttrValue(el, name) {
+        if (!el.hasAttribute(name)) return;
+        var before = el.getAttribute(name);
+        el.removeAttribute(name);
+        emitCommand('attr.remove', idOf(el), { name: name }, { had: true, value: before }, null);
+    }
+
+    /* Replacing a picture is more than its src. A responsive <img> keeps srcset
+     * and sizes, and the browser picks from srcset — the old photo would stay on
+     * screen. width/height fix the box ratio (and CLS), and a lightbox wrapper
+     * holding only this picture keeps its full-size link in data-full.
+     * The src command goes LAST, so the first Undo already brings the old picture
+     * back on screen; srcset is removed rather than rewritten — attr.set does not
+     * accept it (URL list), attr.remove does. */
+    function replaceImage(el, url, meta) {
+        if (el.tagName !== 'IMG') { setAttrValue(el, 'src', url); return; }
+        var box = el.parentElement && el.parentElement.closest('[data-full]');
+        if (box && idOf(box) && box.querySelectorAll('img').length === 1) {
+            setAttrValue(box, 'data-full', url);
+        }
+        if (meta.w > 0 && meta.h > 0) {
+            if (el.hasAttribute('width')) setAttrValue(el, 'width', String(meta.w));
+            if (el.hasAttribute('height')) setAttrValue(el, 'height', String(meta.h));
+        }
+        removeAttrValue(el, 'sizes');
+        removeAttrValue(el, 'srcset');
+        setAttrValue(el, 'src', url);
     }
 
     function setAttrValue(el, name, value) {

@@ -180,6 +180,100 @@ final class UploadServiceTest extends TestCase
         $this->assertArrayHasKey('mtime', $list[0]);
     }
 
+    /* --- gallery: the site's own pictures (gallery_dirs) ------------------ */
+
+    /** Writes a real WebP of the given size into the site under $rel. */
+    private function putWebp(string $rel, int $w = 4, int $h = 4): void
+    {
+        $abs = $this->site . '/' . $rel;
+        @mkdir(dirname($abs), 0777, true);
+        $im = imagecreatetruecolor($w, $h);
+        imagefilledrectangle($im, 0, 0, $w - 1, $h - 1, imagecolorallocate($im, 90, 90, 220));
+        imagewebp($im, $abs, 82);
+        imagedestroy($im);
+    }
+
+    /** @return array<string, array<string, mixed>> list() entries keyed by name */
+    private static function byName(array $list): array
+    {
+        $out = [];
+        foreach ($list as $item) {
+            $out[$item['name']] = $item;
+        }
+        return $out;
+    }
+
+    public function test_list_without_gallery_dirs_shows_uploads_only(): void
+    {
+        $svc = $this->svc();
+        $this->putWebp('assets/img/hero.webp');
+        $svc->store(base64_decode(self::PNG), 'one.png');
+
+        $list = $svc->list();
+        $this->assertCount(1, $list);
+        $this->assertSame('upload', $list[0]['source']);
+    }
+
+    public function test_list_includes_site_pictures_from_gallery_dirs(): void
+    {
+        $svc = $this->svc(['gallery_dirs' => ['assets/img']]);
+        $this->putWebp('assets/img/hero.webp', 40, 20);
+        $svc->store(base64_decode(self::PNG), 'one.png');
+
+        $list = $svc->list();
+        $this->assertSame('upload', $list[0]['source'], 'uploads come first');
+        $site = self::byName($list)['hero.webp'];
+        $this->assertSame('site', $site['source']);
+        $this->assertSame('/assets/img/hero.webp', $site['url']);
+        $this->assertSame(40, $site['w']);
+        $this->assertSame(20, $site['h']);
+    }
+
+    public function test_responsive_copies_fold_into_their_original(): void
+    {
+        $svc = $this->svc(['gallery_dirs' => ['assets/img']]);
+        foreach (['hero.webp', 'hero-400.webp', 'hero-800.webp', 'hero-1280.webp', 'card-200.webp'] as $f) {
+            $this->putWebp('assets/img/' . $f);
+        }
+
+        $names = array_keys(self::byName($svc->list()));
+        sort($names);
+        // hero-* fold into hero.webp; card-200.webp has no original → listed as is
+        $this->assertSame(['card-200.webp', 'hero.webp'], $names);
+    }
+
+    public function test_thumbnail_is_the_smallest_copy_that_is_still_sharp(): void
+    {
+        $svc = $this->svc(['gallery_dirs' => ['assets/img']]);
+        foreach (['hero.webp', 'hero-120.webp', 'hero-400.webp', 'hero-800.webp', 'plain.webp'] as $f) {
+            $this->putWebp('assets/img/' . $f);
+        }
+
+        $items = self::byName($svc->list());
+        // 120 is too small for a tile, 400 is the first one ≥ 300
+        $this->assertSame('/assets/img/hero-400.webp', $items['hero.webp']['thumb']);
+        // no copies → the picture is its own thumbnail
+        $this->assertSame('/assets/img/plain.webp', $items['plain.webp']['thumb']);
+    }
+
+    public function test_gallery_dirs_outside_the_site_or_into_the_cms_are_ignored(): void
+    {
+        $outside = ef2_temp_dir('upload-outside');
+        $svc = $this->svc(['gallery_dirs' => ['../' . basename($outside), 'cms', 'images/uploads', 'missing']]);
+        file_put_contents($outside . '/secret.webp', 'x');
+        $this->putWebp('cms/assets/logo.webp');
+
+        $this->assertSame([], $svc->list());
+    }
+
+    public function test_store_reports_natural_size(): void
+    {
+        $svc = $this->svc();
+        $res = $svc->store($this->jpegBytes(), 'photo.jpg');
+        $this->assertSame(4, $res['w']);
+        $this->assertSame(4, $res['h']);
+    }
+
     /* --- WebP auto-conversion (jpeg/png/gif → webp) ----------------------- */
 
     public function test_png_with_alpha_converts_to_webp(): void
