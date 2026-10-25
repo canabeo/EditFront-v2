@@ -33,7 +33,6 @@ final class UploadServiceTest extends TestCase
         ob_start();
         imagepng($im);
         $bytes = (string) ob_get_clean();
-        imagedestroy($im);
         return $bytes;
     }
 
@@ -45,7 +44,6 @@ final class UploadServiceTest extends TestCase
         ob_start();
         imagejpeg($im, null, 90);
         $bytes = (string) ob_get_clean();
-        imagedestroy($im);
         return $bytes;
     }
 
@@ -57,7 +55,6 @@ final class UploadServiceTest extends TestCase
         ob_start();
         imagegif($im);
         $bytes = (string) ob_get_clean();
-        imagedestroy($im);
         return $bytes;
     }
 
@@ -69,7 +66,6 @@ final class UploadServiceTest extends TestCase
         ob_start();
         imagewebp($im, null, 82);
         $bytes = (string) ob_get_clean();
-        imagedestroy($im);
         return $bytes;
     }
 
@@ -190,7 +186,6 @@ final class UploadServiceTest extends TestCase
         $im = imagecreatetruecolor($w, $h);
         imagefilledrectangle($im, 0, 0, $w - 1, $h - 1, imagecolorallocate($im, 90, 90, 220));
         imagewebp($im, $abs, 82);
-        imagedestroy($im);
     }
 
     /** @return array<string, array<string, mixed>> list() entries keyed by name */

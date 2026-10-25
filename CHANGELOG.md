@@ -17,6 +17,9 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   unchanged.
 
 ### Fixed
+- Image uploads no longer emit a deprecation notice on PHP 8.5: the
+  `imagedestroy()` call, a no-op since PHP 8.0, is removed. Behaviour on
+  PHP 8.2–8.4 is unchanged.
 - **Replacing a responsive picture changed nothing on screen.** The picker set
   only `src`, while the browser renders from `srcset` when it is present, so the
   old photo stayed. Replacing now also drops `srcset` and `sizes`, updates

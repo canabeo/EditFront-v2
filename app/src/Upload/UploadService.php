@@ -311,7 +311,6 @@ final class UploadService
         ob_start();
         $ok = @imagewebp($im, null, 82);
         $webp = (string) ob_get_clean();
-        imagedestroy($im);
         return ($ok && $webp !== '') ? $webp : null;
     }
 
